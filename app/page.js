@@ -103,6 +103,32 @@ export default function Home() {
     }
   }
 
+  function downloadAnalysisJson() {
+    if (!data?.profile?.login) return;
+
+    try {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        source: "DevScope",
+        data,
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${data.profile.login}-devscope-analysis.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Could not export the analysis file.");
+    }
+  }
+
   async function handleAnalyze(e) {
     e.preventDefault();
     await analyzeUsername(username);
@@ -212,7 +238,12 @@ export default function Home() {
       {loading && <LoadingSkeleton />}
 
       {data && !loading && (
-        <Dashboard data={data} onShare={copyShareLink} copied={copied} />
+        <Dashboard
+          data={data}
+          onShare={copyShareLink}
+          onExport={downloadAnalysisJson}
+          copied={copied}
+        />
       )}
 
       {!data && !loading && !error && (
@@ -238,7 +269,7 @@ export default function Home() {
   );
 }
 
-function Dashboard({ data, onShare, copied }) {
+function Dashboard({ data, onShare, onExport, copied }) {
   const { profile, stats, topLanguages, weeklyActivity, topRepositories, insight } = data;
 
   const joinYear = new Date(profile.created_at).getFullYear();
@@ -303,13 +334,22 @@ function Dashboard({ data, onShare, copied }) {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onShare}
-          className="px-3 py-2 rounded-lg border border-dark-400 text-xs font-mono text-slate-300 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
-        >
-          {copied ? "Link Copied" : "Share"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onExport}
+            className="px-3 py-2 rounded-lg border border-dark-400 text-xs font-mono text-slate-300 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
+          >
+            Download JSON
+          </button>
+          <button
+            type="button"
+            onClick={onShare}
+            className="px-3 py-2 rounded-lg border border-dark-400 text-xs font-mono text-slate-300 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
+          >
+            {copied ? "Link Copied" : "Share"}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
