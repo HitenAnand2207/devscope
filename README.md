@@ -8,10 +8,13 @@ A clean, modern web app that analyzes any GitHub developer's profile and display
 
 - GitHub profile (avatar, bio, followers)
 - Stats: repos, stars, forks
+- Extended analytics: activity streak, active repos (30d/90d), profile completeness
 - Language distribution doughnut chart
 - Weekly push activity bar chart
+- Repository highlights ranked by stars/forks
+- Recent search history and shareable analysis links (`?user=<username>`)
 - Productivity score ring
-- AI-generated developer insight (OpenAI or built-in fallback)
+- AI-generated developer insight (Groq or built-in fallback)
 - Responsive, dark-themed UI with animations
 
 ---
@@ -101,10 +104,10 @@ Open `.env.local` and optionally fill in:
 | Variable | Required? | How to get it |
 |---|---|---|
 | `GITHUB_TOKEN` | Optional but recommended | [github.com/settings/tokens](https://github.com/settings/tokens) → Generate new token (classic) → no scopes needed |
-| `OPENAI_API_KEY` | Optional | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+| `GROQ_API_KEY` | Optional | [console.groq.com/keys](https://console.groq.com/keys) |
 
 > **Without `GITHUB_TOKEN`**: You're limited to 60 API requests/hour (fine for development).  
-> **Without `OPENAI_API_KEY`**: A smart rule-based insight is generated instead (totally works!).
+> **Without `GROQ_API_KEY`**: A smart rule-based insight is generated instead (totally works!).
 
 ---
 
@@ -158,7 +161,7 @@ Follow the prompts. When asked for environment variables, add your `GITHUB_TOKEN
 | Styling | Tailwind CSS |
 | Charts | Chart.js + react-chartjs-2 |
 | API | GitHub REST API |
-| AI | OpenAI GPT-3.5 (optional) |
+| AI | Groq LLaMA 3.3 (optional) |
 | Hosting | Vercel |
 
 ---

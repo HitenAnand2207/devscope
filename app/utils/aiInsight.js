@@ -15,7 +15,16 @@ export async function generateInsight(userData) {
   }
 
   try {
-    const { username, repos, stars, topLanguages, score } = userData;
+    const {
+      username,
+      repos,
+      stars,
+      topLanguages,
+      score,
+      streak,
+      activeRepos90d,
+      profileCompleteness,
+    } = userData;
     const langList = Object.keys(topLanguages).slice(0, 3).join(", ");
 
     const prompt = `You are analyzing a GitHub developer profile. Write a single insightful paragraph (2-3 sentences) describing this developer's style, strengths, and focus areas.
@@ -26,6 +35,9 @@ Developer stats:
 - Total stars: ${stars}
 - Top languages: ${langList}
 - Productivity score: ${score}/100
+- Active repositories in last 90 days: ${activeRepos90d}
+- Weekly consistency streak: ${streak} weeks
+- Profile completeness: ${profileCompleteness}%
 
 Be specific, professional, and encouraging. Avoid generic statements. Reply with the paragraph only, no extra text.`;
 
@@ -62,7 +74,16 @@ Be specific, professional, and encouraging. Avoid generic statements. Reply with
 // ─── Rule-based fallback ──────────────────────
 //  No API key required. Generates a decent insight
 //  using the developer's actual stats.
-function generateRuleBasedInsight({ username, repos, stars, topLanguages, score }) {
+function generateRuleBasedInsight({
+  username,
+  repos,
+  stars,
+  topLanguages,
+  score,
+  activeRepos90d,
+  streak,
+  profileCompleteness,
+}) {
   const langs = Object.keys(topLanguages);
   const primary = langs[0] || "various languages";
   const secondary = langs[1] || null;
@@ -99,6 +120,14 @@ function generateRuleBasedInsight({ username, repos, stars, topLanguages, score 
     insights.push(` The diverse language portfolio hints at a polyglot developer comfortable across different technology stacks.`);
   } else {
     insights.push(` Depth over breadth — focused expertise in a core set of technologies suggests a specialist mindset.`);
+  }
+
+  if (activeRepos90d >= 5 || streak >= 3) {
+    insights.push(` Recent activity indicates healthy project momentum with consistent maintenance patterns.`);
+  }
+
+  if (profileCompleteness < 50) {
+    insights.push(` Improving profile metadata (bio, links, company, social handles) could increase discoverability for collaborators and recruiters.`);
   }
 
   return insights.join("");

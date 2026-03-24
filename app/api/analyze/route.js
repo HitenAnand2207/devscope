@@ -18,6 +18,11 @@ import {
   calcTotalForks,
   calcWeeklyActivity,
   calcProductivityScore,
+  calcAvgStarsPerRepo,
+  calcVelocityStats,
+  calcConsistencyStats,
+  calcTopRepositories,
+  calcProfileCompleteness,
 } from "../../utils/github";
 import { generateInsight } from "../../utils/aiInsight";
 
@@ -47,6 +52,11 @@ export async function POST(request) {
     const topLanguages = calcLanguages(repos);
     const weeklyActivity = calcWeeklyActivity(repos);
     const score = calcProductivityScore(repos, stars);
+    const avgStarsPerRepo = calcAvgStarsPerRepo(repos, stars);
+    const velocity = calcVelocityStats(repos);
+    const consistency = calcConsistencyStats(weeklyActivity);
+    const topRepositories = calcTopRepositories(repos, 6);
+    const profileCompleteness = calcProfileCompleteness(user);
 
     // ── Generate AI insight ───────────────────
     const insight = await generateInsight({
@@ -55,6 +65,13 @@ export async function POST(request) {
       stars,
       topLanguages,
       score,
+      avgStarsPerRepo,
+      activeRepos90d: velocity.activeRepos90d,
+      activeRepos30d: velocity.activeRepos30d,
+      archivedRepos: velocity.archivedRepos,
+      activeWeeks: consistency.activeWeeks,
+      streak: consistency.streak,
+      profileCompleteness,
     });
 
     // ── Return full payload ───────────────────
@@ -68,7 +85,9 @@ export async function POST(request) {
         followers: user.followers,
         following: user.following,
         location: user.location,
+        company: user.company,
         blog: user.blog,
+        twitter_username: user.twitter_username,
         public_repos: user.public_repos,
         created_at: user.created_at,
       },
@@ -77,9 +96,17 @@ export async function POST(request) {
         stars,
         forks,
         score,
+        avgStarsPerRepo,
+        activeRepos90d: velocity.activeRepos90d,
+        activeRepos30d: velocity.activeRepos30d,
+        archivedRepos: velocity.archivedRepos,
+        activeWeeks: consistency.activeWeeks,
+        streak: consistency.streak,
+        profileCompleteness,
       },
       topLanguages,
       weeklyActivity,
+      topRepositories,
       insight,
     });
   } catch (err) {
@@ -88,6 +115,16 @@ export async function POST(request) {
       return NextResponse.json(
         { error: "GitHub user not found. Please check the username and try again." },
         { status: 404 }
+      );
+    }
+
+    if (err.message === "GitHub rate limit exceeded") {
+      return NextResponse.json(
+        {
+          error:
+            "GitHub rate limit exceeded. Add a GITHUB_TOKEN in .env.local or wait for reset.",
+        },
+        { status: 429 }
       );
     }
 

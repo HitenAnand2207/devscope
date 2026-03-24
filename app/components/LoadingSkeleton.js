@@ -20,8 +20,8 @@ export default function LoadingSkeleton() {
       </div>
 
       {/* Stats grid skeleton */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {[...Array(6)].map((_, i) => (
           <div key={i} className="glass-card p-5 flex flex-col gap-3">
             <div className="skeleton h-3 w-20" />
             <div className="skeleton h-8 w-16" />
@@ -38,6 +38,14 @@ export default function LoadingSkeleton() {
         <div className="glass-card p-6">
           <div className="skeleton h-3 w-40 mb-5" />
           <div className="skeleton h-52 w-full" />
+        </div>
+      </div>
+
+      <div className="glass-card p-6">
+        <div className="skeleton h-3 w-48 mb-4" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="skeleton h-28 w-full" />
+          <div className="skeleton h-28 w-full" />
         </div>
       </div>
 
