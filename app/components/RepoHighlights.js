@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo, useState } from "react";
+
 function formatRelativeDate(dateString) {
   if (!dateString) return "Unknown";
 
@@ -18,22 +20,64 @@ function formatRelativeDate(dateString) {
 }
 
 export default function RepoHighlights({ repos }) {
+  const [sortMode, setSortMode] = useState("impact");
+
+  const sortedRepos = useMemo(() => {
+    const list = [...repos];
+
+    if (sortMode === "recent") {
+      list.sort((a, b) => new Date(b.pushed_at) - new Date(a.pushed_at));
+      return list;
+    }
+
+    if (sortMode === "name") {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+      return list;
+    }
+
+    list.sort((a, b) => {
+      const aScore = (a.stars || 0) * 2 + (a.forks || 0);
+      const bScore = (b.stars || 0) * 2 + (b.forks || 0);
+      return bScore - aScore;
+    });
+
+    return list;
+  }, [repos, sortMode]);
+
   return (
     <div className="glass-card p-6 animate-fade-up" style={{ opacity: 0 }}>
       <div className="flex items-center justify-between mb-5">
         <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500">
           Top Repository Highlights
         </h3>
-        <span className="text-xs font-mono text-slate-500">
-          Ranked by stars and forks
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-slate-500">Sort</span>
+          {[
+            { id: "impact", label: "Impact" },
+            { id: "recent", label: "Recent" },
+            { id: "name", label: "Name" },
+          ].map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              onClick={() => setSortMode(mode.id)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-mono border transition-colors ${
+                sortMode === mode.id
+                  ? "border-cyan-400/60 text-cyan-300 bg-cyan-400/10"
+                  : "border-dark-400 text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {!repos.length ? (
         <div className="text-slate-500 font-mono text-sm">No repositories available</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {repos.map((repo) => (
+          {sortedRepos.map((repo) => (
             <a
               key={repo.id}
               href={repo.html_url}
