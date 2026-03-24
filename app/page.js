@@ -129,6 +129,17 @@ export default function Home() {
     }
   }
 
+  function resetAnalysis() {
+    setUsername("");
+    setData(null);
+    setError("");
+    setCopied(false);
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("user");
+    window.history.replaceState({}, "", url.toString());
+  }
+
   async function handleAnalyze(e) {
     e.preventDefault();
     await analyzeUsername(username);
@@ -242,6 +253,7 @@ export default function Home() {
           data={data}
           onShare={copyShareLink}
           onExport={downloadAnalysisJson}
+          onReset={resetAnalysis}
           copied={copied}
         />
       )}
@@ -269,7 +281,7 @@ export default function Home() {
   );
 }
 
-function Dashboard({ data, onShare, onExport, copied }) {
+function Dashboard({ data, onShare, onExport, onReset, copied }) {
   const { profile, stats, topLanguages, weeklyActivity, topRepositories, insight } = data;
 
   const joinYear = new Date(profile.created_at).getFullYear();
@@ -335,6 +347,13 @@ function Dashboard({ data, onShare, onExport, copied }) {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onReset}
+            className="px-3 py-2 rounded-lg border border-dark-400 text-xs font-mono text-slate-300 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
+          >
+            Reset
+          </button>
           <button
             type="button"
             onClick={onExport}
