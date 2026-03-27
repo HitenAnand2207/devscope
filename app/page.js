@@ -21,6 +21,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [recentUsers, setRecentUsers] = useState([]);
   const [copied, setCopied] = useState(false);
+  const [insightCopied, setInsightCopied] = useState(false);
 
   useEffect(() => {
     try {
@@ -134,6 +135,7 @@ export default function Home() {
     setData(null);
     setError("");
     setCopied(false);
+    setInsightCopied(false);
 
     const url = new URL(window.location.href);
     url.searchParams.delete("user");
@@ -143,6 +145,19 @@ export default function Home() {
   async function handleAnalyze(e) {
     e.preventDefault();
     await analyzeUsername(username);
+  }
+
+  async function copyInsightText() {
+    const insight = data?.insight;
+    if (!insight) return;
+
+    try {
+      await navigator.clipboard.writeText(insight);
+      setInsightCopied(true);
+      window.setTimeout(() => setInsightCopied(false), 1400);
+    } catch {
+      setError("Could not copy insight from this browser context.");
+    }
   }
 
   return (
@@ -254,7 +269,9 @@ export default function Home() {
           onShare={copyShareLink}
           onExport={downloadAnalysisJson}
           onReset={resetAnalysis}
+          onCopyInsight={copyInsightText}
           copied={copied}
+          insightCopied={insightCopied}
         />
       )}
 
@@ -281,7 +298,15 @@ export default function Home() {
   );
 }
 
-function Dashboard({ data, onShare, onExport, onReset, copied }) {
+function Dashboard({
+  data,
+  onShare,
+  onExport,
+  onReset,
+  onCopyInsight,
+  copied,
+  insightCopied,
+}) {
   const { profile, stats, topLanguages, weeklyActivity, topRepositories, insight } = data;
 
   const joinYear = new Date(profile.created_at).getFullYear();
@@ -458,11 +483,20 @@ function Dashboard({ data, onShare, onExport, onReset, copied }) {
         className="glass-card p-6 animate-fade-up delay-600"
         style={{ opacity: 0 }}
       >
-        <div className="flex items-center gap-2 mb-4">
-          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-          <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500">
-            AI Developer Insight
-          </h3>
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500">
+              AI Developer Insight
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onCopyInsight}
+            className="px-2.5 py-1 rounded-md border border-dark-400 text-[11px] font-mono text-slate-400 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
+          >
+            {insightCopied ? "Copied" : "Copy Insight"}
+          </button>
         </div>
         <p className="text-slate-300 leading-relaxed text-sm md:text-base italic border-l-2 border-cyan-400/40 pl-4">
           "{insight}"
