@@ -160,6 +160,17 @@ export default function Home() {
     }
   }
 
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === "Escape" && data) {
+        resetAnalysis();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [data]);
+
   return (
     <main className="relative z-10 min-h-screen px-4 py-12 flex flex-col items-center">
       <header className="text-center mb-12 animate-fade-up" style={{ opacity: 0 }}>
@@ -191,6 +202,12 @@ export default function Home() {
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !loading && username.trim()) {
+                e.preventDefault();
+                handleAnalyze(e);
+              }
+            }}
             placeholder="torvalds"
             autoComplete="off"
             spellCheck={false}
