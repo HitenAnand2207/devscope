@@ -384,6 +384,23 @@ function Dashboard({
       ? `https://${profile.blog}`
       : "";
 
+  const getDeveloperType = () => {
+    const langs = Object.keys(topLanguages);
+    const primary = langs[0] || "Unknown";
+
+    const backendLangs = ["Python", "Go", "Rust", "Java", "C++", "C", "Ruby", "PHP", "C#"];
+    const frontendLangs = ["JavaScript", "TypeScript", "CSS", "HTML", "Vue", "Svelte", "React"];
+    const dataLangs = ["Python", "R", "Julia", "Scala"];
+
+    if (dataLangs.includes(primary) && stats.repos > 5) return "Data Scientist";
+    if (frontendLangs.includes(primary)) return "Frontend";
+    if (backendLangs.includes(primary) && !frontendLangs.includes(primary)) return "Backend";
+    if (langs.length > 4) return "Polyglot";
+    return "Full-Stack";
+  };
+
+  const devType = getDeveloperType();
+
   return (
     <div className="w-full max-w-5xl space-y-5">
       <div className="glass-card border-gradient p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5 animate-fade-up" style={{ opacity: 0 }}>
@@ -403,6 +420,9 @@ function Dashboard({
             <h2 className="font-mono text-xl font-bold text-white">
               {profile.name || profile.login}
             </h2>
+            <span className="text-[10px] px-2.5 py-1 rounded-full border border-cyan-400/40 text-cyan-300 font-mono bg-cyan-400/5">
+              {devType}
+            </span>
             <span className="font-mono text-sm text-slate-500">@{profile.login}</span>
             <span className="font-mono text-xs text-slate-600">since {joinYear}</span>
           </div>
