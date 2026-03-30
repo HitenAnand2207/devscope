@@ -171,6 +171,54 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [data]);
 
+  async function copyStats() {
+    if (!data) return;
+
+    try {
+      const { profile, stats, topLanguages } = data;
+      const langStr = Object.entries(topLanguages)
+        .map(([lang, count]) => `${lang} (${count})`)
+        .join(", ");
+
+      const summary = `DevScope Analysis for @${profile.login}
+Generated: ${new Date().toLocaleString()}
+
+PROFILE
+Name: ${profile.name || profile.login}
+Followers: ${profile.followers?.toLocaleString() || 0}
+Following: ${profile.following?.toLocaleString() || 0}
+Bio: ${profile.bio || "N/A"}
+
+STATISTICS
+Repositories: ${stats.repos}
+Total Stars: ${stats.stars}
+Average Stars/Repo: ${stats.avgStarsPerRepo}
+Total Forks: ${stats.forks}
+Productivity Score: ${stats.score}/100
+
+ACTIVITY
+Streak: ${stats.streak} weeks
+Active Last 30d: ${stats.activeRepos30d} repos
+Active Last 90d: ${stats.activeRepos90d} repos
+Active Weeks (12-week window): ${stats.activeWeeks}/12
+Archived Repos: ${stats.archivedRepos}
+
+PROFILE HEALTH
+Completeness: ${stats.profileCompleteness}%
+
+TOP LANGUAGES
+${langStr}
+
+View full analysis: ${window.location.href}`;
+
+      await navigator.clipboard.writeText(summary);
+      setError("Stats copied to clipboard!");
+      window.setTimeout(() => setError(""), 2000);
+    } catch {
+      setError("Could not copy stats from this browser context.");
+    }
+  }
+
   return (
     <main className="relative z-10 min-h-screen px-4 py-12 flex flex-col items-center">
       <header className="text-center mb-12 animate-fade-up" style={{ opacity: 0 }}>
@@ -287,6 +335,7 @@ export default function Home() {
           onExport={downloadAnalysisJson}
           onReset={resetAnalysis}
           onCopyInsight={copyInsightText}
+          onCopyStats={copyStats}
           copied={copied}
           insightCopied={insightCopied}
         />
@@ -321,6 +370,7 @@ function Dashboard({
   onExport,
   onReset,
   onCopyInsight,
+  onCopyStats,
   copied,
   insightCopied,
 }) {
@@ -388,7 +438,14 @@ function Dashboard({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={onCopyStats}
+            className="px-3 py-2 rounded-lg border border-dark-400 text-xs font-mono text-slate-300 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
+          >
+            Copy Stats
+          </button>
           <button
             type="button"
             onClick={onReset}
