@@ -497,6 +497,8 @@ function Dashboard({
           label="Repositories"
           value={stats.repos}
           subtitle="public repos"
+          trend={stats.repos >= 20 ? "up" : "neutral"}
+          trendLabel={stats.repos >= 20 ? "broad" : "building"}
           delay={100}
         />
         <StatsCard
@@ -504,6 +506,8 @@ function Dashboard({
           label="Total Stars"
           value={stats.stars}
           subtitle="across all repos"
+          trend={stats.avgStarsPerRepo >= 3 ? "up" : "neutral"}
+          trendLabel={stats.avgStarsPerRepo >= 3 ? "impact" : "early"}
           delay={200}
         />
         <StatsCard
@@ -511,6 +515,8 @@ function Dashboard({
           label="Total Forks"
           value={stats.forks}
           subtitle="times forked"
+          trend={stats.forks >= 10 ? "up" : "neutral"}
+          trendLabel={stats.forks >= 10 ? "shared" : "limited"}
           delay={300}
         />
         <StatsCard
@@ -518,6 +524,8 @@ function Dashboard({
           label="Streak"
           value={stats.streak}
           subtitle="active weeks"
+          trend={stats.streak >= 3 ? "up" : "down"}
+          trendLabel={stats.streak >= 3 ? "consistent" : "watch"}
           delay={400}
         />
         <StatsCard
@@ -525,6 +533,8 @@ function Dashboard({
           label="Active 90d"
           value={stats.activeRepos90d}
           subtitle="recently pushed"
+          trend={stats.activeRepos90d >= 5 ? "up" : "neutral"}
+          trendLabel={stats.activeRepos90d >= 5 ? "shipping" : "steady"}
           delay={500}
         />
         <StatsCard
@@ -532,6 +542,8 @@ function Dashboard({
           label="Profile Health"
           value={`${stats.profileCompleteness}%`}
           subtitle="profile metadata"
+          trend={stats.profileCompleteness >= 70 ? "up" : "down"}
+          trendLabel={stats.profileCompleteness >= 70 ? "strong" : "improve"}
           delay={600}
         />
       </div>
