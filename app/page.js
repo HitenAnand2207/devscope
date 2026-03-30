@@ -14,6 +14,16 @@ function isValidGithubUsername(input) {
 }
 
 const RECENT_USERS_KEY = "devscope.recentUsers";
+const SAMPLE_USERS = [
+  "torvalds",
+  "gaearon",
+  "yyx990803",
+  "sindresorhus",
+  "addyosmani",
+  "tj",
+  "kentcdodds",
+  "vercel",
+];
 
 export default function Home() {
   const [username, setUsername] = useState("");
@@ -89,6 +99,16 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function analyzeRandomUser() {
+    const candidates = SAMPLE_USERS.filter(
+      (u) => u.toLowerCase() !== username.trim().toLowerCase()
+    );
+    const pool = candidates.length ? candidates : SAMPLE_USERS;
+    const selected = pool[Math.floor(Math.random() * pool.length)];
+    setUsername(selected);
+    await analyzeUsername(selected);
   }
 
   async function copyShareLink() {
@@ -284,6 +304,21 @@ View full analysis: ${window.location.href}`;
         >
           {loading ? "Analyzing…" : "Analyze →"}
         </button>
+
+        <button
+          type="button"
+          onClick={analyzeRandomUser}
+          disabled={loading}
+          className="
+            px-4 py-3.5 rounded-xl font-mono font-semibold text-xs
+            border border-dark-400 text-slate-300 tracking-wide
+            hover:border-cyan-400/40 hover:text-cyan-300
+            disabled:opacity-40 disabled:cursor-not-allowed
+            transition-all duration-200
+          "
+        >
+          Surprise Me
+        </button>
       </form>
 
       {!loading && recentUsers.length > 0 && (
@@ -349,7 +384,7 @@ View full analysis: ${window.location.href}`;
             Enter a GitHub username above to get started
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
-            {["torvalds", "gaearon", "yyx990803", "sindresorhus"].map((u) => (
+            {SAMPLE_USERS.slice(0, 4).map((u) => (
               <button
                 key={u}
                 onClick={() => setUsername(u)}
