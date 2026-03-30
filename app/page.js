@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import StatsCard from "./components/StatsCard";
 import LanguageChart from "./components/LanguageChart";
+import LanguageBreakdown from "./components/LanguageBreakdown";
 import CommitChart from "./components/CommitChart";
 import ProductivityMeter from "./components/ProductivityMeter";
 import LoadingSkeleton from "./components/LoadingSkeleton";
@@ -549,6 +550,10 @@ function Dashboard({
       </div>
 
       <CommitChart weeklyActivity={weeklyActivity} />
+
+      {Object.keys(topLanguages).length > 0 && (
+        <LanguageBreakdown languages={topLanguages} totalRepos={stats.repos} />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <SignalCard
