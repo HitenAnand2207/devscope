@@ -21,6 +21,7 @@ function formatRelativeDate(dateString) {
 
 export default function RepoHighlights({ repos }) {
   const [sortMode, setSortMode] = useState("impact");
+  const [query, setQuery] = useState("");
 
   const sortedRepos = useMemo(() => {
     const list = [...repos];
@@ -44,13 +45,26 @@ export default function RepoHighlights({ repos }) {
     return list;
   }, [repos, sortMode]);
 
+  const visibleRepos = useMemo(() => {
+    if (!query.trim()) return sortedRepos;
+    const search = query.trim().toLowerCase();
+    return sortedRepos.filter((repo) => repo.name.toLowerCase().includes(search));
+  }, [sortedRepos, query]);
+
   return (
     <div className="glass-card p-6 animate-fade-up" style={{ opacity: 0 }}>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500">
           Top Repository Highlights
         </h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter repos"
+            className="px-2.5 py-1 rounded-md bg-dark-700 border border-dark-400 text-[11px] font-mono text-slate-300 placeholder:text-slate-500 focus:outline-none focus:border-cyan-400/40"
+          />
           <span className="text-xs font-mono text-slate-500">Sort</span>
           {[
             { id: "impact", label: "Impact" },
@@ -75,9 +89,11 @@ export default function RepoHighlights({ repos }) {
 
       {!repos.length ? (
         <div className="text-slate-500 font-mono text-sm">No repositories available</div>
+      ) : !visibleRepos.length ? (
+        <div className="text-slate-500 font-mono text-sm">No repositories match your filter</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {sortedRepos.map((repo) => (
+          {visibleRepos.map((repo) => (
             <a
               key={repo.id}
               href={repo.html_url}
