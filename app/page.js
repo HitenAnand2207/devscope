@@ -28,6 +28,7 @@ const SAMPLE_USERS = [
 export default function Home() {
   const [username, setUsername] = useState("");
   const [data, setData] = useState(null);
+  const [analysisMeta, setAnalysisMeta] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [recentUsers, setRecentUsers] = useState([]);
@@ -53,6 +54,7 @@ export default function Home() {
   }, []);
 
   async function analyzeUsername(rawUsername) {
+    const startedAt = performance.now();
     const cleanUsername = rawUsername.trim();
 
     if (!cleanUsername) {
@@ -67,6 +69,7 @@ export default function Home() {
     setLoading(true);
     setError("");
     setData(null);
+    setAnalysisMeta(null);
 
     try {
       const res = await fetch("/api/analyze", {
@@ -80,7 +83,12 @@ export default function Home() {
       if (!res.ok) {
         setError(json.error || "Something went wrong.");
       } else {
+        const durationMs = Math.max(1, Math.round(performance.now() - startedAt));
         setData(json);
+        setAnalysisMeta({
+          analyzedAt: new Date().toISOString(),
+          durationMs,
+        });
         setUsername(cleanUsername);
 
         const nextUsers = [
@@ -154,6 +162,7 @@ export default function Home() {
   function resetAnalysis() {
     setUsername("");
     setData(null);
+    setAnalysisMeta(null);
     setError("");
     setCopied(false);
     setInsightCopied(false);
@@ -367,6 +376,7 @@ View full analysis: ${window.location.href}`;
       {data && !loading && (
         <Dashboard
           data={data}
+          analysisMeta={analysisMeta}
           onShare={copyShareLink}
           onExport={downloadAnalysisJson}
           onReset={resetAnalysis}
@@ -402,6 +412,7 @@ View full analysis: ${window.location.href}`;
 
 function Dashboard({
   data,
+  analysisMeta,
   onShare,
   onExport,
   onReset,
@@ -436,6 +447,9 @@ function Dashboard({
   };
 
   const devType = getDeveloperType();
+  const analyzedAtLabel = analysisMeta?.analyzedAt
+    ? new Date(analysisMeta.analyzedAt).toLocaleTimeString()
+    : null;
 
   return (
     <div className="w-full max-w-5xl space-y-5">
@@ -495,6 +509,16 @@ function Dashboard({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {analysisMeta?.durationMs && (
+            <span className="px-2 py-1 rounded-md border border-dark-400 text-[11px] font-mono text-slate-400">
+              {analysisMeta.durationMs}ms
+            </span>
+          )}
+          {analyzedAtLabel && (
+            <span className="px-2 py-1 rounded-md border border-dark-400 text-[11px] font-mono text-slate-400">
+              analyzed {analyzedAtLabel}
+            </span>
+          )}
           <button
             type="button"
             onClick={onCopyStats}
