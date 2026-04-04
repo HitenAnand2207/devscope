@@ -5,22 +5,34 @@
 //  last 12 weeks (estimated from push dates).
 // ─────────────────────────────────────────────
 
-import { Bar } from "react-chartjs-2";
+import { useState } from "react";
+import { Bar, Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
+  LineElement,
+  PointElement,
   Tooltip,
   Legend,
 } from "chart.js";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  Tooltip,
+  Legend
+);
 
 export default function CommitChart({ weeklyActivity }) {
+  const [viewMode, setViewMode] = useState("bar");
   const { labels, data: values } = weeklyActivity;
 
-  const data = {
+  const barData = {
     labels,
     datasets: [
       {
@@ -37,6 +49,23 @@ export default function CommitChart({ weeklyActivity }) {
         ),
         borderWidth: 1,
         borderRadius: 6,
+      },
+    ],
+  };
+
+  const lineData = {
+    labels,
+    datasets: [
+      {
+        label: "Repo pushes",
+        data: values,
+        borderColor: "rgba(0, 245, 212, 0.95)",
+        backgroundColor: "rgba(0, 245, 212, 0.2)",
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 4,
+        tension: 0.35,
+        fill: true,
       },
     ],
   };
@@ -80,11 +109,37 @@ export default function CommitChart({ weeklyActivity }) {
 
   return (
     <div className="glass-card p-6 animate-fade-up delay-500" style={{ opacity: 0 }}>
-      <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500 mb-5">
-        Push Activity — Last 12 Weeks
-      </h3>
+      <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
+        <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500">
+          Push Activity — Last 12 Weeks
+        </h3>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-slate-500">View</span>
+          {[
+            { id: "bar", label: "Bars" },
+            { id: "line", label: "Line" },
+          ].map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              onClick={() => setViewMode(mode.id)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-mono border transition-colors ${
+                viewMode === mode.id
+                  ? "border-cyan-400/60 text-cyan-300 bg-cyan-400/10"
+                  : "border-dark-400 text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div style={{ height: "220px" }}>
-        <Bar data={data} options={options} />
+        {viewMode === "bar" ? (
+          <Bar data={barData} options={options} />
+        ) : (
+          <Line data={lineData} options={options} />
+        )}
       </div>
     </div>
   );
