@@ -15,6 +15,7 @@ function isValidGithubUsername(input) {
 
 const RECENT_USERS_KEY = "devscope.recentUsers";
 const FAVORITE_USERS_KEY = "devscope.favoriteUsers";
+const LAST_ANALYZED_USER_KEY = "devscope.lastAnalyzedUser";
 const SAMPLE_USERS = [
   "torvalds",
   "gaearon",
@@ -34,6 +35,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [recentUsers, setRecentUsers] = useState([]);
   const [favoriteUsers, setFavoriteUsers] = useState([]);
+  const [lastAnalyzedUser, setLastAnalyzedUser] = useState("");
   const [copied, setCopied] = useState(false);
   const [insightCopied, setInsightCopied] = useState(false);
 
@@ -54,6 +56,15 @@ export default function Home() {
       }
     } catch {
       setFavoriteUsers([]);
+    }
+
+    try {
+      const cachedLast = localStorage.getItem(LAST_ANALYZED_USER_KEY) || "";
+      if (cachedLast) {
+        setLastAnalyzedUser(cachedLast);
+      }
+    } catch {
+      setLastAnalyzedUser("");
     }
 
     const params = new URLSearchParams(window.location.search);
@@ -108,6 +119,8 @@ export default function Home() {
         ].slice(0, 6);
         setRecentUsers(nextUsers);
         localStorage.setItem(RECENT_USERS_KEY, JSON.stringify(nextUsers));
+        setLastAnalyzedUser(cleanUsername);
+        localStorage.setItem(LAST_ANALYZED_USER_KEY, cleanUsername);
 
         const url = new URL(window.location.href);
         url.searchParams.set("user", cleanUsername);
@@ -353,6 +366,21 @@ View full analysis: ${window.location.href}`;
           Surprise Me
         </button>
       </form>
+
+      {!loading && !data && lastAnalyzedUser && (
+        <div className="w-full max-w-xl mb-8 animate-fade-up" style={{ opacity: 0 }}>
+          <button
+            type="button"
+            onClick={() => {
+              setUsername(lastAnalyzedUser);
+              analyzeUsername(lastAnalyzedUser);
+            }}
+            className="px-3 py-2 rounded-lg border border-dark-400 text-xs font-mono text-slate-300 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
+          >
+            Resume Last: {lastAnalyzedUser}
+          </button>
+        </div>
+      )}
 
       {!loading && recentUsers.length > 0 && (
         <div className="w-full max-w-xl mb-8 animate-fade-up" style={{ opacity: 0 }}>
