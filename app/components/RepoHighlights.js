@@ -22,6 +22,7 @@ function formatRelativeDate(dateString) {
 export default function RepoHighlights({ repos }) {
   const [sortMode, setSortMode] = useState("impact");
   const [query, setQuery] = useState("");
+  const [expanded, setExpanded] = useState(false);
 
   const sortedRepos = useMemo(() => {
     const list = [...repos];
@@ -50,6 +51,11 @@ export default function RepoHighlights({ repos }) {
     const search = query.trim().toLowerCase();
     return sortedRepos.filter((repo) => repo.name.toLowerCase().includes(search));
   }, [sortedRepos, query]);
+
+  const shownRepos = useMemo(() => {
+    if (expanded) return visibleRepos.slice(0, 12);
+    return visibleRepos.slice(0, 6);
+  }, [visibleRepos, expanded]);
 
   return (
     <div className="glass-card p-6 animate-fade-up" style={{ opacity: 0 }}>
@@ -92,37 +98,54 @@ export default function RepoHighlights({ repos }) {
       ) : !visibleRepos.length ? (
         <div className="text-slate-500 font-mono text-sm">No repositories match your filter</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {visibleRepos.map((repo) => (
-            <a
-              key={repo.id}
-              href={repo.html_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-xl border border-dark-400 bg-dark-700/40 p-4 hover:border-cyan-400/40 transition-colors"
-            >
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <h4 className="font-mono text-sm text-white truncate">{repo.name}</h4>
-                {repo.archived && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full border border-amber-400/40 text-amber-300 font-mono">
-                    archived
-                  </span>
-                )}
-              </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {shownRepos.map((repo) => (
+              <a
+                key={repo.id}
+                href={repo.html_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-xl border border-dark-400 bg-dark-700/40 p-4 hover:border-cyan-400/40 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h4 className="font-mono text-sm text-white truncate">{repo.name}</h4>
+                  {repo.archived && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border border-amber-400/40 text-amber-300 font-mono">
+                      archived
+                    </span>
+                  )}
+                </div>
 
-              <p className="text-xs text-slate-400 mb-3 line-clamp-2 min-h-[32px]">
-                {repo.description || "No description provided"}
-              </p>
+                <p className="text-xs text-slate-400 mb-3 line-clamp-2 min-h-[32px]">
+                  {repo.description || "No description provided"}
+                </p>
 
-              <div className="flex flex-wrap gap-3 text-xs font-mono text-slate-500">
-                <span>⭐ {repo.stars}</span>
-                <span>🍴 {repo.forks}</span>
-                <span>{repo.language || "Unknown"}</span>
-                <span>Updated {formatRelativeDate(repo.pushed_at)}</span>
-              </div>
-            </a>
-          ))}
-        </div>
+                <div className="flex flex-wrap gap-3 text-xs font-mono text-slate-500">
+                  <span>⭐ {repo.stars}</span>
+                  <span>🍴 {repo.forks}</span>
+                  <span>{repo.language || "Unknown"}</span>
+                  <span>Updated {formatRelativeDate(repo.pushed_at)}</span>
+                </div>
+              </a>
+            ))}
+          </div>
+
+          {visibleRepos.length > 6 && (
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-[11px] font-mono text-slate-500">
+                Showing {shownRepos.length} of {visibleRepos.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                className="px-2.5 py-1 rounded-md text-[11px] font-mono border border-dark-400 text-slate-400 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
+              >
+                {expanded ? "Show Less" : "Show More"}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
