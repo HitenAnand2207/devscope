@@ -460,7 +460,10 @@ View full analysis: ${window.location.href}`;
             {SAMPLE_USERS.slice(0, 4).map((u) => (
               <button
                 key={u}
-                onClick={() => setUsername(u)}
+                onClick={() => {
+                  setUsername(u);
+                  analyzeUsername(u);
+                }}
                 className="px-3 py-1.5 rounded-full border border-dark-400 text-slate-500 font-mono text-xs hover:border-cyan-400/40 hover:text-cyan-400 transition-all"
               >
                 {u}
