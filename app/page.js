@@ -29,6 +29,7 @@ const SAMPLE_USERS = [
 
 export default function Home() {
   const inputRef = useRef(null);
+  const compareInputRef = useRef(null);
   const [username, setUsername] = useState("");
   const [data, setData] = useState(null);
   const [analysisMeta, setAnalysisMeta] = useState(null);
@@ -39,6 +40,12 @@ export default function Home() {
   const [lastAnalyzedUser, setLastAnalyzedUser] = useState("");
   const [copied, setCopied] = useState(false);
   const [insightCopied, setInsightCopied] = useState(false);
+  const [compareUsername, setCompareUsername] = useState("");
+  const [compareData, setCompareData] = useState(null);
+  const [compareAnalysisMeta, setCompareAnalysisMeta] = useState(null);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareCopied, setCompareCopied] = useState(false);
+  const [compareInsightCopied, setCompareInsightCopied] = useState(false);
 
   useEffect(() => {
     try {
@@ -144,6 +151,48 @@ export default function Home() {
     await analyzeUsername(selected);
   }
 
+  async function analyzeCompareUsername(rawUsername) {
+    const startedAt = performance.now();
+    const cleanUsername = rawUsername.trim();
+
+    if (!cleanUsername) {
+      return;
+    }
+
+    if (!isValidGithubUsername(cleanUsername)) {
+      setError("Please enter a valid GitHub username format for comparison.");
+      return;
+    }
+
+    setCompareLoading(true);
+
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: cleanUsername }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(json.error || "Something went wrong comparing profiles.");
+      } else {
+        const durationMs = Math.max(1, Math.round(performance.now() - startedAt));
+        setCompareData(json);
+        setCompareAnalysisMeta({
+          analyzedAt: new Date().toISOString(),
+          durationMs,
+        });
+        setCompareUsername(cleanUsername);
+      }
+    } catch {
+      setError("Network error. Please check your connection.");
+    } finally {
+      setCompareLoading(false);
+    }
+  }
+
   function toggleFavoriteUser(rawUser) {
     const user = (rawUser || "").trim();
     if (!user) return;
@@ -204,6 +253,11 @@ export default function Home() {
     setError("");
     setCopied(false);
     setInsightCopied(false);
+    setCompareUsername("");
+    setCompareData(null);
+    setCompareAnalysisMeta(null);
+    setCompareCopied(false);
+    setCompareInsightCopied(false);
 
     const url = new URL(window.location.href);
     url.searchParams.delete("user");
@@ -382,6 +436,68 @@ View full analysis: ${window.location.href}`;
         </button>
       </form>
 
+      {data && !compareData && (
+        <div className="w-full max-w-xl flex gap-3 mb-8 animate-fade-up delay-300" style={{ opacity: 0 }}>
+          <div className="relative flex-1">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-xs select-none">
+              vs
+            </span>
+            <input
+              ref={compareInputRef}
+              type="text"
+              value={compareUsername}
+              onChange={(e) => setCompareUsername(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !compareLoading && compareUsername.trim()) {
+                  e.preventDefault();
+                  analyzeCompareUsername(compareUsername);
+                }
+              }}
+              placeholder="gvanrossum"
+              autoComplete="off"
+              spellCheck={false}
+              className="
+                w-full bg-dark-700 border border-dark-400 rounded-xl
+                pl-12 pr-4 py-3
+                font-mono text-sm text-white placeholder:text-slate-600
+                focus:outline-none focus:border-cyan-400/60 focus:glow-cyan
+                transition-all duration-200
+              "
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => analyzeCompareUsername(compareUsername)}
+            disabled={compareLoading || !compareUsername.trim()}
+            className="
+              px-4 py-3 rounded-xl font-mono font-semibold text-xs
+              border border-cyan-400/40 text-cyan-300
+              hover:bg-cyan-400/10 active:scale-95
+              disabled:opacity-40 disabled:cursor-not-allowed
+              transition-all duration-200
+            "
+          >
+            {compareLoading ? "Comparing…" : "Compare"}
+          </button>
+        </div>
+      )}
+
+      {compareData && (
+        <button
+          type="button"
+          onClick={() => {
+            setCompareUsername("");
+            setCompareData(null);
+            setCompareAnalysisMeta(null);
+            setCompareCopied(false);
+            setCompareInsightCopied(false);
+          }}
+          className="w-full max-w-xl mb-2 px-3 py-2 text-xs font-mono text-slate-400 hover:text-slate-300 rounded-lg border border-dark-400 hover:border-red-500/40 transition-colors text-left"
+        >
+          ✕ Clear Comparison
+        </button>
+      )}
+
       {!loading && !data && lastAnalyzedUser && (
         <div className="w-full max-w-xl mb-8 animate-fade-up" style={{ opacity: 0 }}>
           <button
@@ -475,7 +591,138 @@ View full analysis: ${window.location.href}`;
 
       {loading && <LoadingSkeleton />}
 
-      {data && !loading && (
+      {compareLoading && <LoadingSkeleton />}
+
+      {data && !loading && compareData && !compareLoading && (
+        <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Dashboard
+            data={data}
+            analysisMeta={analysisMeta}
+            onToggleFavorite={toggleFavoriteUser}
+            isFavorite={favoriteUsers.some(
+              (u) => u.toLowerCase() === data?.profile?.login?.toLowerCase()
+            )}
+            onShare={copyShareLink}
+            onExport={downloadAnalysisJson}
+            onReset={resetAnalysis}
+            onCopyInsight={copyInsightText}
+            onCopyStats={copyStats}
+            copied={copied}
+            insightCopied={insightCopied}
+          />
+          <Dashboard
+            data={compareData}
+            analysisMeta={compareAnalysisMeta}
+            onToggleFavorite={toggleFavoriteUser}
+            isFavorite={favoriteUsers.some(
+              (u) => u.toLowerCase() === compareData?.profile?.login?.toLowerCase()
+            )}
+            onShare={() => {
+              const url = `${window.location.origin}?user=${encodeURIComponent(
+                compareData?.profile?.login || compareUsername
+              )}`;
+              try {
+                navigator.clipboard.writeText(url);
+                setCompareCopied(true);
+                window.setTimeout(() => setCompareCopied(false), 1400);
+              } catch {
+                setError("Could not copy link from this browser context.");
+              }
+            }}
+            onExport={() => {
+              if (!compareData?.profile?.login) return;
+              try {
+                const payload = {
+                  exportedAt: new Date().toISOString(),
+                  source: "DevScope",
+                  data: compareData,
+                };
+                const blob = new Blob([JSON.stringify(payload, null, 2)], {
+                  type: "application/json;charset=utf-8",
+                });
+                const url = URL.createObjectURL(blob);
+                const anchor = document.createElement("a");
+                anchor.href = url;
+                anchor.download = `${compareData.profile.login}-devscope-analysis.json`;
+                document.body.appendChild(anchor);
+                anchor.click();
+                document.body.removeChild(anchor);
+                URL.revokeObjectURL(url);
+              } catch {
+                setError("Could not export the analysis file.");
+              }
+            }}
+            onReset={() => {
+              setCompareUsername("");
+              setCompareData(null);
+              setCompareAnalysisMeta(null);
+              setCompareCopied(false);
+              setCompareInsightCopied(false);
+            }}
+            onCopyInsight={() => {
+              const insight = compareData?.insight;
+              if (!insight) return;
+              try {
+                navigator.clipboard.writeText(insight);
+                setCompareInsightCopied(true);
+                window.setTimeout(() => setCompareInsightCopied(false), 1400);
+              } catch {
+                setError("Could not copy insight from this browser context.");
+              }
+            }}
+            onCopyStats={() => {
+              if (!compareData) return;
+              try {
+                const { profile, stats, topLanguages } = compareData;
+                const langStr = Object.entries(topLanguages)
+                  .map(([lang, count]) => `${lang} (${count})`)
+                  .join(", ");
+
+                const summary = `DevScope Analysis for @${profile.login}
+Generated: ${new Date().toLocaleString()}
+
+PROFILE
+Name: ${profile.name || profile.login}
+Followers: ${profile.followers?.toLocaleString() || 0}
+Following: ${profile.following?.toLocaleString() || 0}
+Bio: ${profile.bio || "N/A"}
+
+STATISTICS
+Repositories: ${stats.repos}
+Total Stars: ${stats.stars}
+Average Stars/Repo: ${stats.avgStarsPerRepo}
+Total Forks: ${stats.forks}
+Productivity Score: ${stats.score}/100
+
+ACTIVITY
+Streak: ${stats.streak} weeks
+Active Last 30d: ${stats.activeRepos30d} repos
+Active Last 90d: ${stats.activeRepos90d} repos
+Active Weeks (12-week window): ${stats.activeWeeks}/12
+Archived Repos: ${stats.archivedRepos}
+
+PROFILE HEALTH
+Completeness: ${stats.profileCompleteness}%
+
+TOP LANGUAGES
+${langStr}
+
+View full analysis: ${window.location.href}`;
+
+                navigator.clipboard.writeText(summary);
+                setError("Stats copied to clipboard!");
+                window.setTimeout(() => setError(""), 2000);
+              } catch {
+                setError("Could not copy stats from this browser context.");
+              }
+            }}
+            copied={compareCopied}
+            insightCopied={compareInsightCopied}
+          />
+        </div>
+      )}
+
+      {data && !loading && !compareData && (
         <Dashboard
           data={data}
           analysisMeta={analysisMeta}
