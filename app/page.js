@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import StatsCard from "./components/StatsCard";
 import LanguageChart from "./components/LanguageChart";
 import LanguageBreakdown from "./components/LanguageBreakdown";
@@ -28,6 +28,7 @@ const SAMPLE_USERS = [
 ];
 
 export default function Home() {
+  const inputRef = useRef(null);
   const [username, setUsername] = useState("");
   const [data, setData] = useState(null);
   const [analysisMeta, setAnalysisMeta] = useState(null);
@@ -232,6 +233,19 @@ export default function Home() {
       if (e.key === "Escape" && data) {
         resetAnalysis();
       }
+
+      if (e.key === "/") {
+        const target = e.target;
+        const isTypingContext =
+          target instanceof HTMLInputElement ||
+          target instanceof HTMLTextAreaElement ||
+          target?.isContentEditable;
+
+        if (!isTypingContext) {
+          e.preventDefault();
+          inputRef.current?.focus();
+        }
+      }
     }
 
     window.addEventListener("keydown", handleKeyDown);
@@ -314,6 +328,7 @@ View full analysis: ${window.location.href}`;
             github.com/
           </span>
           <input
+            ref={inputRef}
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
