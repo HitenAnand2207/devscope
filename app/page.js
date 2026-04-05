@@ -14,6 +14,7 @@ function isValidGithubUsername(input) {
 }
 
 const RECENT_USERS_KEY = "devscope.recentUsers";
+const FAVORITE_USERS_KEY = "devscope.favoriteUsers";
 const SAMPLE_USERS = [
   "torvalds",
   "gaearon",
@@ -32,6 +33,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [recentUsers, setRecentUsers] = useState([]);
+  const [favoriteUsers, setFavoriteUsers] = useState([]);
   const [copied, setCopied] = useState(false);
   const [insightCopied, setInsightCopied] = useState(false);
 
@@ -43,6 +45,15 @@ export default function Home() {
       }
     } catch {
       setRecentUsers([]);
+    }
+
+    try {
+      const cachedFavorites = JSON.parse(localStorage.getItem(FAVORITE_USERS_KEY) || "[]");
+      if (Array.isArray(cachedFavorites)) {
+        setFavoriteUsers(cachedFavorites.slice(0, 8));
+      }
+    } catch {
+      setFavoriteUsers([]);
     }
 
     const params = new URLSearchParams(window.location.search);
@@ -117,6 +128,19 @@ export default function Home() {
     const selected = pool[Math.floor(Math.random() * pool.length)];
     setUsername(selected);
     await analyzeUsername(selected);
+  }
+
+  function toggleFavoriteUser(rawUser) {
+    const user = (rawUser || "").trim();
+    if (!user) return;
+
+    const exists = favoriteUsers.some((u) => u.toLowerCase() === user.toLowerCase());
+    const next = exists
+      ? favoriteUsers.filter((u) => u.toLowerCase() !== user.toLowerCase())
+      : [user, ...favoriteUsers].slice(0, 8);
+
+    setFavoriteUsers(next);
+    localStorage.setItem(FAVORITE_USERS_KEY, JSON.stringify(next));
   }
 
   async function copyShareLink() {
@@ -365,6 +389,41 @@ View full analysis: ${window.location.href}`;
         </div>
       )}
 
+      {!loading && favoriteUsers.length > 0 && (
+        <div className="w-full max-w-xl mb-8 animate-fade-up" style={{ opacity: 0 }}>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-mono uppercase tracking-widest text-slate-500">
+              Favorites
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setFavoriteUsers([]);
+                localStorage.removeItem(FAVORITE_USERS_KEY);
+              }}
+              className="text-xs font-mono text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {favoriteUsers.map((u) => (
+              <button
+                key={u}
+                type="button"
+                onClick={() => {
+                  setUsername(u);
+                  analyzeUsername(u);
+                }}
+                className="px-3 py-1.5 rounded-full border border-cyan-400/30 text-cyan-300 font-mono text-xs hover:border-cyan-400/60 hover:text-cyan-200 transition-all"
+              >
+                ★ {u}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="w-full max-w-xl mb-8 px-4 py-3 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 font-mono text-sm animate-fade-up" style={{ opacity: 0 }}>
           ⚠ {error}
@@ -377,6 +436,10 @@ View full analysis: ${window.location.href}`;
         <Dashboard
           data={data}
           analysisMeta={analysisMeta}
+          onToggleFavorite={toggleFavoriteUser}
+          isFavorite={favoriteUsers.some(
+            (u) => u.toLowerCase() === data?.profile?.login?.toLowerCase()
+          )}
           onShare={copyShareLink}
           onExport={downloadAnalysisJson}
           onReset={resetAnalysis}
@@ -413,6 +476,8 @@ View full analysis: ${window.location.href}`;
 function Dashboard({
   data,
   analysisMeta,
+  onToggleFavorite,
+  isFavorite,
   onShare,
   onExport,
   onReset,
@@ -519,6 +584,13 @@ function Dashboard({
               analyzed {analyzedAtLabel}
             </span>
           )}
+          <button
+            type="button"
+            onClick={() => onToggleFavorite(profile.login)}
+            className="px-2.5 py-1 rounded-md border border-dark-400 text-[11px] font-mono text-slate-300 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
+          >
+            {isFavorite ? "Unfavorite" : "Favorite"}
+          </button>
           <button
             type="button"
             onClick={onCopyStats}
