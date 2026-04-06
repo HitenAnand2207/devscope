@@ -116,6 +116,7 @@ export default function Home() {
   const [compareLoading, setCompareLoading] = useState(false);
   const [compareCopied, setCompareCopied] = useState(false);
   const [compareInsightCopied, setCompareInsightCopied] = useState(false);
+  const [compareSummaryCopied, setCompareSummaryCopied] = useState(false);
 
   useEffect(() => {
     try {
@@ -424,6 +425,38 @@ View full analysis: ${window.location.href}`;
     }
   }
 
+  async function copyComparisonSummary() {
+    if (!comparisonSummary) return;
+
+    try {
+      const lines = comparisonSummary.metrics.map((metric) => {
+        const winner =
+          metric.winner === "tie"
+            ? "Tie"
+            : metric.winner === "primary"
+            ? comparisonSummary.primaryName
+            : comparisonSummary.secondaryName;
+
+        return `${metric.label}: ${comparisonSummary.primaryName} ${metric.primaryValue.toLocaleString()} vs ${comparisonSummary.secondaryName} ${metric.secondaryValue.toLocaleString()} (${winner})`;
+      });
+
+      const summary = `DevScope Comparison Summary
+${comparisonSummary.primaryName} vs ${comparisonSummary.secondaryName}
+
+Verdict: ${comparisonSummary.verdict}
+Wins: ${comparisonSummary.primaryName} ${comparisonSummary.primaryWins} - ${comparisonSummary.secondaryName} ${comparisonSummary.secondaryWins}
+Ties: ${comparisonSummary.ties}
+
+${lines.join("\n")}`;
+
+      await navigator.clipboard.writeText(summary);
+      setCompareSummaryCopied(true);
+      window.setTimeout(() => setCompareSummaryCopied(false), 1400);
+    } catch {
+      setError("Could not copy comparison summary from this browser context.");
+    }
+  }
+
   const comparisonSummary = getComparisonSummary(data, compareData);
 
   return (
@@ -563,6 +596,7 @@ View full analysis: ${window.location.href}`;
             setCompareAnalysisMeta(null);
             setCompareCopied(false);
             setCompareInsightCopied(false);
+            setCompareSummaryCopied(false);
           }}
           className="w-full max-w-xl mb-2 px-3 py-2 text-xs font-mono text-slate-400 hover:text-slate-300 rounded-lg border border-dark-400 hover:border-red-500/40 transition-colors text-left"
         >
@@ -584,6 +618,16 @@ View full analysis: ${window.location.href}`;
             <div className="px-3 py-1.5 rounded-full border border-cyan-400/30 bg-cyan-400/10 text-cyan-300 font-mono text-xs">
               {comparisonSummary.verdict}
             </div>
+          </div>
+
+          <div className="flex justify-end mb-3">
+            <button
+              type="button"
+              onClick={copyComparisonSummary}
+              className="px-3 py-1.5 rounded-md border border-dark-400 text-[11px] font-mono text-slate-400 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
+            >
+              {compareSummaryCopied ? "Summary Copied" : "Copy Summary"}
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
