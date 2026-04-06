@@ -97,6 +97,12 @@ function getComparisonSummary(primaryData, secondaryData) {
   };
 }
 
+function shortenHandle(value, maxLength = 12) {
+  if (!value) return "";
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 3)}...`;
+}
+
 export default function Home() {
   const inputRef = useRef(null);
   const compareInputRef = useRef(null);
@@ -612,7 +618,7 @@ ${lines.join("\n")}`;
                 Comparison Summary
               </h3>
               <p className="text-sm text-slate-300 truncate" title={`${comparisonSummary.primaryName} vs ${comparisonSummary.secondaryName}`}>
-                {comparisonSummary.primaryName} vs {comparisonSummary.secondaryName}
+                {shortenHandle(comparisonSummary.primaryName, 16)} vs {shortenHandle(comparisonSummary.secondaryName, 16)}
               </p>
             </div>
             <div
@@ -657,15 +663,15 @@ ${lines.join("\n")}`;
                       {metric.winner === "tie"
                         ? "Tie"
                         : metric.winner === "primary"
-                        ? comparisonSummary.primaryName
-                        : comparisonSummary.secondaryName}
+                        ? shortenHandle(comparisonSummary.primaryName, 14)
+                        : shortenHandle(comparisonSummary.secondaryName, 14)}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 text-sm font-mono">
                     <div className="min-w-0">
                       <div className="text-slate-300 text-[11px] truncate" title={comparisonSummary.primaryName}>
-                        {comparisonSummary.primaryName}
+                        {shortenHandle(comparisonSummary.primaryName, 14)}
                       </div>
                       <div className={metric.winner === "primary" ? "text-cyan-300" : "text-slate-500"}>
                         {primaryLabel}
@@ -673,7 +679,7 @@ ${lines.join("\n")}`;
                     </div>
                     <div className="text-right min-w-0">
                       <div className="text-slate-300 text-[11px] truncate" title={comparisonSummary.secondaryName}>
-                        {comparisonSummary.secondaryName}
+                        {shortenHandle(comparisonSummary.secondaryName, 14)}
                       </div>
                       <div className={metric.winner === "secondary" ? "text-cyan-300" : "text-slate-500"}>
                         {secondaryLabel}
@@ -686,7 +692,7 @@ ${lines.join("\n")}`;
           </div>
 
           <p className="mt-4 text-xs font-mono text-slate-500 break-words">
-            Wins: {comparisonSummary.primaryName} {comparisonSummary.primaryWins} - {comparisonSummary.secondaryName} {comparisonSummary.secondaryWins} · {comparisonSummary.ties} ties
+            Wins: {shortenHandle(comparisonSummary.primaryName, 16)} {comparisonSummary.primaryWins} - {shortenHandle(comparisonSummary.secondaryName, 16)} {comparisonSummary.secondaryWins} · {comparisonSummary.ties} ties
           </p>
         </div>
       )}
