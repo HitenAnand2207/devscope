@@ -607,15 +607,18 @@ ${lines.join("\n")}`;
       {comparisonSummary && !compareLoading && (
         <div className="w-full max-w-7xl glass-card border-gradient p-5 mb-4 animate-fade-up" style={{ opacity: 0 }}>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-            <div>
+            <div className="min-w-0">
               <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500 mb-1">
                 Comparison Summary
               </h3>
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-slate-300 truncate" title={`${comparisonSummary.primaryName} vs ${comparisonSummary.secondaryName}`}>
                 {comparisonSummary.primaryName} vs {comparisonSummary.secondaryName}
               </p>
             </div>
-            <div className="px-3 py-1.5 rounded-full border border-cyan-400/30 bg-cyan-400/10 text-cyan-300 font-mono text-xs">
+            <div
+              className="max-w-full md:max-w-[320px] px-3 py-1.5 rounded-full border border-cyan-400/30 bg-cyan-400/10 text-cyan-300 font-mono text-xs truncate"
+              title={comparisonSummary.verdict}
+            >
               {comparisonSummary.verdict}
             </div>
           </div>
@@ -636,12 +639,21 @@ ${lines.join("\n")}`;
               const secondaryLabel = metric.secondaryValue.toLocaleString();
 
               return (
-                <div key={metric.label} className="rounded-xl border border-dark-400 bg-dark-700/30 p-4">
+                <div key={metric.label} className="rounded-xl border border-dark-400 bg-dark-700/30 p-4 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="font-mono text-xs uppercase tracking-widest text-slate-500">
                       {metric.label}
                     </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-dark-400 text-slate-400">
+                    <span
+                      className="max-w-[120px] text-[10px] font-mono px-2 py-0.5 rounded-full border border-dark-400 text-slate-400 truncate"
+                      title={
+                        metric.winner === "tie"
+                          ? "Tie"
+                          : metric.winner === "primary"
+                          ? comparisonSummary.primaryName
+                          : comparisonSummary.secondaryName
+                      }
+                    >
                       {metric.winner === "tie"
                         ? "Tie"
                         : metric.winner === "primary"
@@ -650,15 +662,19 @@ ${lines.join("\n")}`;
                     </span>
                   </div>
 
-                  <div className="flex items-end justify-between gap-3 text-sm font-mono">
-                    <div>
-                      <div className="text-slate-300">{comparisonSummary.primaryName}</div>
+                  <div className="grid grid-cols-2 gap-3 text-sm font-mono">
+                    <div className="min-w-0">
+                      <div className="text-slate-300 text-[11px] truncate" title={comparisonSummary.primaryName}>
+                        {comparisonSummary.primaryName}
+                      </div>
                       <div className={metric.winner === "primary" ? "text-cyan-300" : "text-slate-500"}>
                         {primaryLabel}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-slate-300">{comparisonSummary.secondaryName}</div>
+                    <div className="text-right min-w-0">
+                      <div className="text-slate-300 text-[11px] truncate" title={comparisonSummary.secondaryName}>
+                        {comparisonSummary.secondaryName}
+                      </div>
                       <div className={metric.winner === "secondary" ? "text-cyan-300" : "text-slate-500"}>
                         {secondaryLabel}
                       </div>
@@ -669,7 +685,7 @@ ${lines.join("\n")}`;
             })}
           </div>
 
-          <p className="mt-4 text-xs font-mono text-slate-500">
+          <p className="mt-4 text-xs font-mono text-slate-500 break-words">
             Wins: {comparisonSummary.primaryName} {comparisonSummary.primaryWins} - {comparisonSummary.secondaryName} {comparisonSummary.secondaryWins} · {comparisonSummary.ties} ties
           </p>
         </div>
