@@ -27,6 +27,76 @@ const SAMPLE_USERS = [
   "vercel",
 ];
 
+function getComparisonSummary(primaryData, secondaryData) {
+  if (!primaryData || !secondaryData) return null;
+
+  const primaryName = primaryData.profile?.login || "Primary";
+  const secondaryName = secondaryData.profile?.login || "Secondary";
+
+  const metricGroups = [
+    {
+      label: "Stars",
+      primaryValue: primaryData.stats?.stars || 0,
+      secondaryValue: secondaryData.stats?.stars || 0,
+    },
+    {
+      label: "Repositories",
+      primaryValue: primaryData.stats?.repos || 0,
+      secondaryValue: secondaryData.stats?.repos || 0,
+    },
+    {
+      label: "Followers",
+      primaryValue: primaryData.profile?.followers || 0,
+      secondaryValue: secondaryData.profile?.followers || 0,
+    },
+    {
+      label: "90d Activity",
+      primaryValue: primaryData.stats?.activeRepos90d || 0,
+      secondaryValue: secondaryData.stats?.activeRepos90d || 0,
+    },
+    {
+      label: "Productivity",
+      primaryValue: primaryData.stats?.score || 0,
+      secondaryValue: secondaryData.stats?.score || 0,
+    },
+  ];
+
+  const metrics = metricGroups.map((metric) => {
+    let winner = "tie";
+    if (metric.primaryValue > metric.secondaryValue) {
+      winner = "primary";
+    } else if (metric.secondaryValue > metric.primaryValue) {
+      winner = "secondary";
+    }
+
+    return {
+      ...metric,
+      winner,
+    };
+  });
+
+  const primaryWins = metrics.filter((metric) => metric.winner === "primary").length;
+  const secondaryWins = metrics.filter((metric) => metric.winner === "secondary").length;
+  const ties = metrics.length - primaryWins - secondaryWins;
+
+  let verdict = "Dead even";
+  if (primaryWins > secondaryWins) {
+    verdict = `${primaryName} leads ${primaryWins}-${secondaryWins}`;
+  } else if (secondaryWins > primaryWins) {
+    verdict = `${secondaryName} leads ${secondaryWins}-${primaryWins}`;
+  }
+
+  return {
+    primaryName,
+    secondaryName,
+    primaryWins,
+    secondaryWins,
+    ties,
+    verdict,
+    metrics,
+  };
+}
+
 export default function Home() {
   const inputRef = useRef(null);
   const compareInputRef = useRef(null);
@@ -354,6 +424,8 @@ View full analysis: ${window.location.href}`;
     }
   }
 
+  const comparisonSummary = getComparisonSummary(data, compareData);
+
   return (
     <main className="relative z-10 min-h-screen px-4 py-12 flex flex-col items-center">
       <header className="text-center mb-12 animate-fade-up" style={{ opacity: 0 }}>
@@ -496,6 +568,67 @@ View full analysis: ${window.location.href}`;
         >
           ✕ Clear Comparison
         </button>
+      )}
+
+      {comparisonSummary && !compareLoading && (
+        <div className="w-full max-w-7xl glass-card border-gradient p-5 mb-4 animate-fade-up" style={{ opacity: 0 }}>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+            <div>
+              <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500 mb-1">
+                Comparison Summary
+              </h3>
+              <p className="text-sm text-slate-300">
+                {comparisonSummary.primaryName} vs {comparisonSummary.secondaryName}
+              </p>
+            </div>
+            <div className="px-3 py-1.5 rounded-full border border-cyan-400/30 bg-cyan-400/10 text-cyan-300 font-mono text-xs">
+              {comparisonSummary.verdict}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+            {comparisonSummary.metrics.map((metric) => {
+              const primaryLabel = metric.primaryValue.toLocaleString();
+              const secondaryLabel = metric.secondaryValue.toLocaleString();
+
+              return (
+                <div key={metric.label} className="rounded-xl border border-dark-400 bg-dark-700/30 p-4">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="font-mono text-xs uppercase tracking-widest text-slate-500">
+                      {metric.label}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-dark-400 text-slate-400">
+                      {metric.winner === "tie"
+                        ? "Tie"
+                        : metric.winner === "primary"
+                        ? comparisonSummary.primaryName
+                        : comparisonSummary.secondaryName}
+                    </span>
+                  </div>
+
+                  <div className="flex items-end justify-between gap-3 text-sm font-mono">
+                    <div>
+                      <div className="text-slate-300">{comparisonSummary.primaryName}</div>
+                      <div className={metric.winner === "primary" ? "text-cyan-300" : "text-slate-500"}>
+                        {primaryLabel}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-slate-300">{comparisonSummary.secondaryName}</div>
+                      <div className={metric.winner === "secondary" ? "text-cyan-300" : "text-slate-500"}>
+                        {secondaryLabel}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="mt-4 text-xs font-mono text-slate-500">
+            Wins: {comparisonSummary.primaryName} {comparisonSummary.primaryWins} - {comparisonSummary.secondaryName} {comparisonSummary.secondaryWins} · {comparisonSummary.ties} ties
+          </p>
+        </div>
       )}
 
       {!loading && !data && lastAnalyzedUser && (
