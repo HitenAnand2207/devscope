@@ -23,6 +23,18 @@ export default function RepoHighlights({ repos }) {
   const [sortMode, setSortMode] = useState("impact");
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [languageFilter, setLanguageFilter] = useState("all");
+
+  const availableLanguages = useMemo(() => {
+    const unique = new Set();
+    repos.forEach((repo) => {
+      if (repo.language) {
+        unique.add(repo.language);
+      }
+    });
+
+    return Array.from(unique).sort((a, b) => a.localeCompare(b));
+  }, [repos]);
 
   const sortedRepos = useMemo(() => {
     const list = [...repos];
@@ -47,10 +59,15 @@ export default function RepoHighlights({ repos }) {
   }, [repos, sortMode]);
 
   const visibleRepos = useMemo(() => {
-    if (!query.trim()) return sortedRepos;
     const search = query.trim().toLowerCase();
-    return sortedRepos.filter((repo) => repo.name.toLowerCase().includes(search));
-  }, [sortedRepos, query]);
+
+    return sortedRepos.filter((repo) => {
+      const matchesSearch = !search || repo.name.toLowerCase().includes(search);
+      const repoLanguage = repo.language || "Unknown";
+      const matchesLanguage = languageFilter === "all" || repoLanguage === languageFilter;
+      return matchesSearch && matchesLanguage;
+    });
+  }, [sortedRepos, query, languageFilter]);
 
   const shownRepos = useMemo(() => {
     if (expanded) return visibleRepos.slice(0, 12);
@@ -71,6 +88,19 @@ export default function RepoHighlights({ repos }) {
             placeholder="Filter repos"
             className="px-2.5 py-1 rounded-md bg-dark-700 border border-dark-400 text-[11px] font-mono text-slate-300 placeholder:text-slate-500 focus:outline-none focus:border-cyan-400/40"
           />
+          <select
+            value={languageFilter}
+            onChange={(e) => setLanguageFilter(e.target.value)}
+            className="px-2.5 py-1 rounded-md bg-dark-700 border border-dark-400 text-[11px] font-mono text-slate-300 focus:outline-none focus:border-cyan-400/40"
+          >
+            <option value="all">All Languages</option>
+            <option value="Unknown">Unknown</option>
+            {availableLanguages.map((language) => (
+              <option key={language} value={language}>
+                {language}
+              </option>
+            ))}
+          </select>
           <span className="text-xs font-mono text-slate-500">Sort</span>
           {[
             { id: "impact", label: "Impact" },
