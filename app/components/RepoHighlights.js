@@ -25,6 +25,16 @@ export default function RepoHighlights({ repos }) {
   const [expanded, setExpanded] = useState(false);
   const [languageFilter, setLanguageFilter] = useState("all");
 
+  const hasActiveFilters =
+    sortMode !== "impact" || query.trim() !== "" || languageFilter !== "all" || expanded;
+
+  function resetFilters() {
+    setSortMode("impact");
+    setQuery("");
+    setExpanded(false);
+    setLanguageFilter("all");
+  }
+
   const availableLanguages = useMemo(() => {
     const unique = new Set();
     repos.forEach((repo) => {
@@ -120,6 +130,14 @@ export default function RepoHighlights({ repos }) {
               {mode.label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={resetFilters}
+            disabled={!hasActiveFilters}
+            className="px-2.5 py-1 rounded-md text-[11px] font-mono border border-dark-400 text-slate-400 hover:border-cyan-400/40 hover:text-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Clear Filters
+          </button>
         </div>
       </div>
 
