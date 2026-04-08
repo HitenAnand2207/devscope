@@ -24,15 +24,21 @@ export default function RepoHighlights({ repos }) {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [languageFilter, setLanguageFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const hasActiveFilters =
-    sortMode !== "impact" || query.trim() !== "" || languageFilter !== "all" || expanded;
+    sortMode !== "impact" ||
+    query.trim() !== "" ||
+    languageFilter !== "all" ||
+    statusFilter !== "all" ||
+    expanded;
 
   function resetFilters() {
     setSortMode("impact");
     setQuery("");
     setExpanded(false);
     setLanguageFilter("all");
+    setStatusFilter("all");
   }
 
   const availableLanguages = useMemo(() => {
@@ -75,9 +81,14 @@ export default function RepoHighlights({ repos }) {
       const matchesSearch = !search || repo.name.toLowerCase().includes(search);
       const repoLanguage = repo.language || "Unknown";
       const matchesLanguage = languageFilter === "all" || repoLanguage === languageFilter;
-      return matchesSearch && matchesLanguage;
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && !repo.archived) ||
+        (statusFilter === "archived" && repo.archived);
+
+      return matchesSearch && matchesLanguage && matchesStatus;
     });
-  }, [sortedRepos, query, languageFilter]);
+  }, [sortedRepos, query, languageFilter, statusFilter]);
 
   const shownRepos = useMemo(() => {
     if (expanded) return visibleRepos.slice(0, 12);
@@ -111,6 +122,26 @@ export default function RepoHighlights({ repos }) {
               </option>
             ))}
           </select>
+          <div className="flex items-center gap-1 rounded-md border border-dark-400 bg-dark-700 p-0.5">
+            {[
+              { id: "all", label: "All" },
+              { id: "active", label: "Active" },
+              { id: "archived", label: "Archived" },
+            ].map((mode) => (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => setStatusFilter(mode.id)}
+                className={`px-2 py-1 rounded-sm text-[11px] font-mono transition-colors ${
+                  statusFilter === mode.id
+                    ? "bg-cyan-400/10 text-cyan-300"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
           <span className="text-xs font-mono text-slate-500">Sort</span>
           {[
             { id: "impact", label: "Impact" },
