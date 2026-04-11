@@ -26,12 +26,14 @@ export default function RepoHighlights({ repos }) {
   const [languageFilter, setLanguageFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
+  const [minStars, setMinStars] = useState("0");
 
   const hasActiveFilters =
     sortMode !== "impact" ||
     query.trim() !== "" ||
     languageFilter !== "all" ||
     statusFilter !== "all" ||
+    minStars !== "0" ||
     viewMode !== "grid" ||
     expanded;
 
@@ -42,6 +44,7 @@ export default function RepoHighlights({ repos }) {
     setLanguageFilter("all");
     setStatusFilter("all");
     setViewMode("grid");
+    setMinStars("0");
   }
 
   const availableLanguages = useMemo(() => {
@@ -79,6 +82,7 @@ export default function RepoHighlights({ repos }) {
 
   const visibleRepos = useMemo(() => {
     const search = query.trim().toLowerCase();
+    const starThreshold = Number(minStars) || 0;
 
     return sortedRepos.filter((repo) => {
       const matchesSearch = !search || repo.name.toLowerCase().includes(search);
@@ -88,10 +92,11 @@ export default function RepoHighlights({ repos }) {
         statusFilter === "all" ||
         (statusFilter === "active" && !repo.archived) ||
         (statusFilter === "archived" && repo.archived);
+      const matchesStars = (repo.stars || 0) >= starThreshold;
 
-      return matchesSearch && matchesLanguage && matchesStatus;
+      return matchesSearch && matchesLanguage && matchesStatus && matchesStars;
     });
-  }, [sortedRepos, query, languageFilter, statusFilter]);
+  }, [sortedRepos, query, languageFilter, statusFilter, minStars]);
 
   const shownRepos = useMemo(() => {
     if (expanded) return visibleRepos.slice(0, 12);
@@ -125,6 +130,20 @@ export default function RepoHighlights({ repos }) {
                 {language}
               </option>
             ))}
+          </select>
+
+          <select
+            value={minStars}
+            onChange={(e) => setMinStars(e.target.value)}
+            className="w-full min-w-0 px-2.5 py-1.5 rounded-md bg-dark-700 border border-dark-400 text-[11px] font-mono text-slate-300 focus:outline-none focus:border-cyan-400/40"
+          >
+            <option value="0">Any Stars</option>
+            <option value="1">1+ Stars</option>
+            <option value="5">5+ Stars</option>
+            <option value="10">10+ Stars</option>
+            <option value="25">25+ Stars</option>
+            <option value="50">50+ Stars</option>
+            <option value="100">100+ Stars</option>
           </select>
 
           <div className="min-w-0 flex items-center gap-1 rounded-md border border-dark-400 bg-dark-700 p-0.5 overflow-x-auto">
@@ -206,6 +225,17 @@ export default function RepoHighlights({ repos }) {
         <div className="text-slate-500 font-mono text-sm">No repositories match your filter</div>
       ) : (
         <>
+          <div className="mb-3 flex items-center justify-between gap-3 text-[11px] font-mono text-slate-500">
+            <span>
+              Showing {shownRepos.length} of {visibleRepos.length} matching repos
+            </span>
+            {minStars !== "0" && (
+              <span className="px-2 py-1 rounded-full border border-cyan-400/20 text-cyan-300">
+                {minStars}+ stars
+              </span>
+            )}
+          </div>
+
           <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "space-y-3"}>
             {shownRepos.map((repo) => (
               <a
