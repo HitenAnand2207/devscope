@@ -22,6 +22,7 @@ import {
   calcVelocityStats,
   calcConsistencyStats,
   calcTopRepositories,
+  normalizeRepositories,
   calcProfileCompleteness,
 } from "../../utils/github";
 import { generateInsight } from "../../utils/aiInsight";
@@ -56,6 +57,7 @@ export async function POST(request) {
     const velocity = calcVelocityStats(repos);
     const consistency = calcConsistencyStats(weeklyActivity);
     const topRepositories = calcTopRepositories(repos, 6);
+    const repositories = normalizeRepositories(repos);
     const profileCompleteness = calcProfileCompleteness(user);
 
     // ── Generate AI insight ───────────────────
@@ -107,6 +109,7 @@ export async function POST(request) {
       topLanguages,
       weeklyActivity,
       topRepositories,
+      repositories,
       insight,
     });
   } catch (err) {

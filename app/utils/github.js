@@ -176,6 +176,17 @@ export function calcConsistencyStats(weeklyActivity) {
 }
 
 export function calcTopRepositories(repos, limit = 6) {
+  return normalizeRepositories(repos)
+    .sort((a, b) => {
+      if ((b.stars || 0) !== (a.stars || 0)) {
+        return (b.stars || 0) - (a.stars || 0);
+      }
+      return (b.forks || 0) - (a.forks || 0);
+    })
+    .slice(0, limit);
+}
+
+export function normalizeRepositories(repos) {
   return [...repos]
     .sort((a, b) => {
       if ((b.stargazers_count || 0) !== (a.stargazers_count || 0)) {
@@ -183,17 +194,22 @@ export function calcTopRepositories(repos, limit = 6) {
       }
       return (b.forks_count || 0) - (a.forks_count || 0);
     })
-    .slice(0, limit)
     .map((repo) => ({
       id: repo.id,
       name: repo.name,
+      full_name: repo.full_name,
       description: repo.description,
       language: repo.language,
       stars: repo.stargazers_count || 0,
       forks: repo.forks_count || 0,
+      open_issues_count: repo.open_issues_count || 0,
+      watchers: repo.watchers_count || 0,
+      size: repo.size || 0,
       pushed_at: repo.pushed_at,
+      created_at: repo.created_at,
       html_url: repo.html_url,
       archived: repo.archived,
+      fork: repo.fork,
     }));
 }
 

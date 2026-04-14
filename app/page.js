@@ -978,7 +978,7 @@ function Dashboard({
   copied,
   insightCopied,
 }) {
-  const { profile, stats, topLanguages, weeklyActivity, topRepositories, insight } = data;
+  const { profile, stats, topLanguages, weeklyActivity, topRepositories, repositories, insight } = data;
 
   const joinYear = new Date(profile.created_at).getFullYear();
   const blogUrl =
@@ -1211,7 +1211,7 @@ function Dashboard({
         />
       </div>
 
-      <RepoHighlights repos={topRepositories || []} />
+      <RepoHighlights repos={repositories || topRepositories || []} />
 
       <div
         className="glass-card p-6 animate-fade-up delay-600"
