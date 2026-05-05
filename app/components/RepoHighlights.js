@@ -19,6 +19,17 @@ function formatRelativeDate(dateString) {
   return `${years}y ago`;
 }
 
+function formatCount(value) {
+  return Number(value || 0).toLocaleString();
+}
+
+function getRepoScale(score) {
+  if (score >= 100) return "Dominant";
+  if (score >= 40) return "Strong";
+  if (score >= 15) return "Solid";
+  return "Emerging";
+}
+
 export default function RepoHighlights({ repos }) {
   const [sortMode, setSortMode] = useState("impact");
   const [query, setQuery] = useState("");
@@ -62,6 +73,47 @@ export default function RepoHighlights({ repos }) {
     });
 
     return Array.from(unique).sort((a, b) => a.localeCompare(b));
+  }, [repos]);
+
+  const repoOverview = useMemo(() => {
+    const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
+
+    const topStarRepo = repos.reduce(
+      (best, repo) => ((repo.stars || 0) > (best?.stars || 0) ? repo : best),
+      null
+    );
+
+    const latestRepo = repos.reduce((best, repo) => {
+      if (!repo.pushed_at) return best;
+      if (!best?.pushed_at) return repo;
+      return new Date(repo.pushed_at).getTime() > new Date(best.pushed_at).getTime()
+        ? repo
+        : best;
+    }, null);
+
+    const activeRepos90d = repos.filter((repo) => {
+      if (!repo.pushed_at) return false;
+      return now - new Date(repo.pushed_at).getTime() <= 90 * DAY;
+    }).length;
+
+    const languageCount = repos.reduce((counts, repo) => {
+      const language = repo.language || "Unknown";
+      counts[language] = (counts[language] || 0) + 1;
+      return counts;
+    }, {});
+
+    const [topLanguage, topLanguageCount] = Object.entries(languageCount).sort(
+      (a, b) => b[1] - a[1]
+    )[0] || ["Unknown", 0];
+
+    return {
+      topStarRepo,
+      latestRepo,
+      activeRepos90d,
+      topLanguage,
+      topLanguageCount,
+    };
   }, [repos]);
 
   const sortedRepos = useMemo(() => {
@@ -143,6 +195,11 @@ export default function RepoHighlights({ repos }) {
     );
   }, [visibleRepos]);
 
+  const hiddenCount = Math.max(0, visibleRepos.length - shownRepos.length);
+  const topStarRepoScale = repoOverview.topStarRepo
+    ? getRepoScale((repoOverview.topStarRepo.stars || 0) * 2 + (repoOverview.topStarRepo.forks || 0))
+    : "Emerging";
+
   const shownRepos = useMemo(() => {
     if (expanded) return visibleRepos.slice(0, 24);
     return visibleRepos.slice(0, 6);
@@ -191,11 +248,52 @@ export default function RepoHighlights({ repos }) {
   }
 
   return (
-    <div className="glass-card p-4 sm:p-6 animate-fade-up" style={{ opacity: 0 }}>
-      <div className="flex flex-col gap-3 mb-5">
-        <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500 truncate">
-          Top Repository Highlights
-        </h3>
+    <div className="glass-card p-4 sm:p-6 animate-fade-up border-gradient" style={{ opacity: 0 }}>
+      <div className="flex flex-col gap-4 mb-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500 truncate">
+              Repository Spotlight
+            </h3>
+            <p className="mt-1 text-sm text-slate-400 max-w-2xl">
+              A sharper look at the most active, starred, and recently updated projects.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2 text-[11px] font-mono text-slate-500">
+            <span className="px-2 py-1 rounded-full border border-dark-400 bg-dark-700/70">
+              {repos.length.toLocaleString()} repos
+            </span>
+            <span className="px-2 py-1 rounded-full border border-dark-400 bg-dark-700/70">
+              {repoOverview.activeRepos90d} active in 90d
+            </span>
+            <span className="px-2 py-1 rounded-full border border-dark-400 bg-dark-700/70">
+              Top language: {repoOverview.topLanguage} ({repoOverview.topLanguageCount})
+            </span>
+            <span className="px-2 py-1 rounded-full border border-dark-400 bg-dark-700/70">
+              Latest update: {repoOverview.latestRepo?.name || "Unknown"}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-dark-400 bg-dark-700/50 px-3 py-3">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Visible Stars</p>
+            <p className="mt-1 text-sm font-mono text-slate-200">{formatCount(visibleSummary.stars)}</p>
+          </div>
+          <div className="rounded-xl border border-dark-400 bg-dark-700/50 px-3 py-3">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Visible Forks</p>
+            <p className="mt-1 text-sm font-mono text-slate-200">{formatCount(visibleSummary.forks)}</p>
+          </div>
+          <div className="rounded-xl border border-dark-400 bg-dark-700/50 px-3 py-3">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Updated 90d</p>
+            <p className="mt-1 text-sm font-mono text-slate-200">{formatCount(visibleSummary.updated90d)}</p>
+          </div>
+          <div className="rounded-xl border border-dark-400 bg-dark-700/50 px-3 py-3">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Archived</p>
+            <p className="mt-1 text-sm font-mono text-slate-200">{formatCount(visibleSummary.archived)}</p>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
           <input
@@ -338,12 +436,15 @@ export default function RepoHighlights({ repos }) {
       {!repos.length ? (
         <div className="text-slate-500 font-mono text-sm">No repositories available</div>
       ) : !visibleRepos.length ? (
-        <div className="text-slate-500 font-mono text-sm">No repositories match your filter</div>
+        <div className="rounded-xl border border-dark-400 bg-dark-700/40 p-4 text-slate-500 font-mono text-sm">
+          No repositories match your filter. Try widening the language, star, or recency filters.
+        </div>
       ) : (
         <>
           <div className="mb-3 flex items-center justify-between gap-3 text-[11px] font-mono text-slate-500">
             <span>
               Showing {shownRepos.length} of {visibleRepos.length} matching repos
+              {hiddenCount > 0 ? `, with ${hiddenCount} more hidden` : ""}
             </span>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               {minStars !== "0" && (
@@ -359,25 +460,6 @@ export default function RepoHighlights({ repos }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
-            <div className="rounded-lg border border-dark-400 bg-dark-700/40 px-3 py-2">
-              <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Visible Stars</p>
-              <p className="text-sm font-mono text-slate-200">{visibleSummary.stars.toLocaleString()}</p>
-            </div>
-            <div className="rounded-lg border border-dark-400 bg-dark-700/40 px-3 py-2">
-              <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Visible Forks</p>
-              <p className="text-sm font-mono text-slate-200">{visibleSummary.forks.toLocaleString()}</p>
-            </div>
-            <div className="rounded-lg border border-dark-400 bg-dark-700/40 px-3 py-2">
-              <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Updated 90d</p>
-              <p className="text-sm font-mono text-slate-200">{visibleSummary.updated90d}</p>
-            </div>
-            <div className="rounded-lg border border-dark-400 bg-dark-700/40 px-3 py-2">
-              <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Archived</p>
-              <p className="text-sm font-mono text-slate-200">{visibleSummary.archived}</p>
-            </div>
-          </div>
-
           <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "space-y-3"}>
             {shownRepos.map((repo) => (
               <a
@@ -385,7 +467,7 @@ export default function RepoHighlights({ repos }) {
                 href={repo.html_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`rounded-xl border border-dark-400 bg-dark-700/40 p-4 hover:border-cyan-400/40 transition-colors min-w-0 ${
+                className={`group rounded-xl border border-dark-400 bg-dark-700/40 p-4 hover:border-cyan-400/40 hover:bg-dark-700/60 transition-all duration-300 min-w-0 ${
                   viewMode === "list" ? "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" : ""
                 }`}
               >
@@ -408,18 +490,36 @@ export default function RepoHighlights({ repos }) {
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-400 mb-3 line-clamp-2 min-h-[32px] break-words">
+                  <p className="text-xs text-slate-400 mb-3 line-clamp-2 min-h-[32px] break-words group-hover:text-slate-300 transition-colors">
                     {repo.description || "No description provided"}
                   </p>
+
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    <span className="px-2 py-1 rounded-full border border-cyan-400/20 bg-cyan-400/5 text-[10px] font-mono text-cyan-300">
+                      {repo.language || "Unknown"}
+                    </span>
+                    <span className="px-2 py-1 rounded-full border border-slate-500/40 bg-slate-500/10 text-[10px] font-mono text-slate-300">
+                      {topStarRepoScale}
+                    </span>
+                    <span className="px-2 py-1 rounded-full border border-dark-400 bg-dark-700/60 text-[10px] font-mono text-slate-400">
+                      Updated {formatRelativeDate(repo.pushed_at)}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap gap-3 text-xs font-mono text-slate-500 shrink-0">
-                  <span>⭐ {repo.stars}</span>
-                  <span>🍴 {repo.forks}</span>
-                  <span>👀 {repo.watchers || 0}</span>
-                  <span>⚠ {repo.open_issues_count || 0}</span>
-                  <span>{repo.language || "Unknown"}</span>
-                  <span>Updated {formatRelativeDate(repo.pushed_at)}</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono text-slate-500 shrink-0 sm:min-w-[240px]">
+                  <span className="rounded-lg border border-dark-400 bg-dark-700/30 px-2.5 py-2 text-center">
+                    ⭐ {formatCount(repo.stars)}
+                  </span>
+                  <span className="rounded-lg border border-dark-400 bg-dark-700/30 px-2.5 py-2 text-center">
+                    🍴 {formatCount(repo.forks)}
+                  </span>
+                  <span className="rounded-lg border border-dark-400 bg-dark-700/30 px-2.5 py-2 text-center">
+                    👀 {formatCount(repo.watchers || 0)}
+                  </span>
+                  <span className="rounded-lg border border-dark-400 bg-dark-700/30 px-2.5 py-2 text-center">
+                    ⚠ {formatCount(repo.open_issues_count || 0)}
+                  </span>
                 </div>
               </a>
             ))}
@@ -428,14 +528,14 @@ export default function RepoHighlights({ repos }) {
           {visibleRepos.length > 6 && (
             <div className="mt-4 flex items-center justify-between">
               <span className="text-[11px] font-mono text-slate-500">
-                Showing {shownRepos.length} of {visibleRepos.length}
+                  Showing {shownRepos.length} of {visibleRepos.length} matched repos
               </span>
               <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
                 className="px-2.5 py-1 rounded-md text-[11px] font-mono border border-dark-400 text-slate-400 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
               >
-                {expanded ? "Show Less" : "Show More"}
+                  {expanded ? "Collapse Spotlight" : "Expand Spotlight"}
               </button>
             </div>
           )}
