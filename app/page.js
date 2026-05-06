@@ -7,6 +7,7 @@ import CommitChart from "./components/CommitChart";
 import ProductivityMeter from "./components/ProductivityMeter";
 import LoadingSkeleton from "./components/LoadingSkeleton";
 import RepoHighlights from "./components/RepoHighlights";
+import ExportShare from "./components/ExportShare";
 
 function isValidGithubUsername(input) {
   const value = input.trim();
@@ -808,6 +809,8 @@ ${lines.join("\n")}`;
             onCopyStats={copyStats}
             copied={copied}
             insightCopied={insightCopied}
+            username={data?.profile?.login || username}
+            repos={data.repositories || data.topRepositories || []}
           />
           <Dashboard
             data={compareData}
@@ -917,6 +920,8 @@ View full analysis: ${window.location.href}`;
             }}
             copied={compareCopied}
             insightCopied={compareInsightCopied}
+            username={compareData?.profile?.login || compareUsername}
+            repos={compareData.repositories || compareData.topRepositories || []}
           />
         </div>
       )}
@@ -936,6 +941,8 @@ View full analysis: ${window.location.href}`;
           onCopyStats={copyStats}
           copied={copied}
           insightCopied={insightCopied}
+          username={username}
+          repos={data.repositories || data.topRepositories || []}
         />
       )}
 
@@ -977,6 +984,8 @@ function Dashboard({
   onCopyStats,
   copied,
   insightCopied,
+  username,
+  repos = [],
 }) {
   const { profile, stats, topLanguages, weeklyActivity, topRepositories, repositories, insight } = data;
 
@@ -1097,13 +1106,7 @@ function Dashboard({
           >
             Reset
           </button>
-          <button
-            type="button"
-            onClick={onExport}
-            className="px-3 py-2 rounded-lg border border-dark-400 text-xs font-mono text-slate-300 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
-          >
-            Download JSON
-          </button>
+          <ExportShare username={username} data={data} analysisMeta={analysisMeta} repos={repos} />
           <button
             type="button"
             onClick={onShare}
