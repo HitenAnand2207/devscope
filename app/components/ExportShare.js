@@ -11,7 +11,7 @@ import {
   exportAsJSON,
   exportAsCSV,
   exportAsHTML,
-} from '@/app/utils/exportUtils';
+} from '../utils/exportUtils';
 
 export default function ExportShare({ username, data, analysisMeta, repos = [] }) {
   const [showMenu, setShowMenu] = useState(false);
