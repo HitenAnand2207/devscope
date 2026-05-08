@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import RepoComparison from "./RepoComparison";
 
 function formatRelativeDate(dateString) {
   if (!dateString) return "Unknown";
@@ -40,6 +41,8 @@ export default function RepoHighlights({ repos }) {
   const [minStars, setMinStars] = useState("0");
   const [recencyFilter, setRecencyFilter] = useState("all");
   const [includeForks, setIncludeForks] = useState(true);
+  const [selectedRepoIds, setSelectedRepoIds] = useState(new Set());
+  const [showComparison, setShowComparison] = useState(false);
 
   const hasActiveFilters =
     sortMode !== "impact" ||
@@ -63,6 +66,25 @@ export default function RepoHighlights({ repos }) {
     setRecencyFilter("all");
     setIncludeForks(true);
   }
+
+  function toggleRepoSelection(repoId) {
+    const updated = new Set(selectedRepoIds);
+    if (updated.has(repoId)) {
+      updated.delete(repoId);
+    } else {
+      updated.add(repoId);
+    }
+    setSelectedRepoIds(updated);
+  }
+
+  function clearSelection() {
+    setSelectedRepoIds(new Set());
+    setShowComparison(false);
+  }
+
+  const selectedRepos = useMemo(() => {
+    return repos.filter((repo) => selectedRepoIds.has(repo.id));
+  }, [repos, selectedRepoIds]);
 
   const availableLanguages = useMemo(() => {
     const unique = new Set();
@@ -249,6 +271,9 @@ export default function RepoHighlights({ repos }) {
 
   return (
     <div className="glass-card p-4 sm:p-6 animate-fade-up border-gradient" style={{ opacity: 0 }}>
+      {showComparison && selectedRepos.length >= 2 && (
+        <RepoComparison selectedRepos={selectedRepos} onClose={() => setShowComparison(false)} />
+      )}
       <div className="flex flex-col gap-4 mb-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
@@ -422,6 +447,25 @@ export default function RepoHighlights({ repos }) {
           >
             Export Shown CSV
           </button>
+          {selectedRepoIds.size > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowComparison(!showComparison)}
+                disabled={selectedRepoIds.size < 2}
+                className="px-2.5 py-1 rounded-md text-[11px] font-mono border border-cyan-400/40 bg-cyan-400/10 text-cyan-300 hover:border-cyan-400/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Compare ({selectedRepoIds.size})
+              </button>
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="px-2.5 py-1 rounded-md text-[11px] font-mono border border-dark-400 text-slate-400 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
+              >
+                Clear Selection
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={resetFilters}
@@ -461,68 +505,83 @@ export default function RepoHighlights({ repos }) {
           </div>
 
           <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "space-y-3"}>
-            {shownRepos.map((repo) => (
-              <a
-                key={repo.id}
-                href={repo.html_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`group rounded-xl border border-dark-400 bg-dark-700/40 p-4 hover:border-cyan-400/40 hover:bg-dark-700/60 transition-all duration-300 min-w-0 ${
-                  viewMode === "list" ? "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" : ""
-                }`}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3 mb-2 min-w-0">
-                    <h4 className="font-mono text-sm text-white truncate" title={repo.name}>
-                      {repo.name}
-                    </h4>
-                    <div className="shrink-0 flex items-center gap-1.5">
-                      {repo.fork && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full border border-slate-500/40 text-slate-300 font-mono">
-                          fork
+            {shownRepos.map((repo) => {
+              const isSelected = selectedRepoIds.has(repo.id);
+              return (
+                <div
+                  key={repo.id}
+                  className={`group rounded-xl border p-4 transition-all duration-300 ${
+                    isSelected
+                      ? "border-cyan-400/60 bg-cyan-400/10"
+                      : "border-dark-400 bg-dark-700/40 hover:border-cyan-400/40 hover:bg-dark-700/60"
+                  } ${viewMode === "list" ? "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" : ""}`}
+                >
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleRepoSelection(repo.id)}
+                      className="shrink-0 w-4 h-4 mt-1 rounded border-dark-400 bg-dark-700 text-cyan-400 cursor-pointer"
+                    />
+                    <a
+                      href={repo.html_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 min-w-0"
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2 min-w-0">
+                        <h4 className="font-mono text-sm text-white truncate" title={repo.name}>
+                          {repo.name}
+                        </h4>
+                        <div className="shrink-0 flex items-center gap-1.5">
+                          {repo.fork && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full border border-slate-500/40 text-slate-300 font-mono">
+                              fork
+                            </span>
+                          )}
+                          {repo.archived && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full border border-amber-400/40 text-amber-300 font-mono">
+                              archived
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-slate-400 mb-3 line-clamp-2 min-h-[32px] break-words group-hover:text-slate-300 transition-colors">
+                        {repo.description || "No description provided"}
+                      </p>
+
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        <span className="px-2 py-1 rounded-full border border-cyan-400/20 bg-cyan-400/5 text-[10px] font-mono text-cyan-300">
+                          {repo.language || "Unknown"}
                         </span>
-                      )}
-                      {repo.archived && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full border border-amber-400/40 text-amber-300 font-mono">
-                          archived
+                        <span className="px-2 py-1 rounded-full border border-slate-500/40 bg-slate-500/10 text-[10px] font-mono text-slate-300">
+                          {topStarRepoScale}
                         </span>
-                      )}
-                    </div>
+                        <span className="px-2 py-1 rounded-full border border-dark-400 bg-dark-700/60 text-[10px] font-mono text-slate-400">
+                          Updated {formatRelativeDate(repo.pushed_at)}
+                        </span>
+                      </div>
+                    </a>
                   </div>
 
-                  <p className="text-xs text-slate-400 mb-3 line-clamp-2 min-h-[32px] break-words group-hover:text-slate-300 transition-colors">
-                    {repo.description || "No description provided"}
-                  </p>
-
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    <span className="px-2 py-1 rounded-full border border-cyan-400/20 bg-cyan-400/5 text-[10px] font-mono text-cyan-300">
-                      {repo.language || "Unknown"}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono text-slate-500 shrink-0 sm:min-w-[240px]">
+                    <span className="rounded-lg border border-dark-400 bg-dark-700/30 px-2.5 py-2 text-center">
+                      ⭐ {formatCount(repo.stars)}
                     </span>
-                    <span className="px-2 py-1 rounded-full border border-slate-500/40 bg-slate-500/10 text-[10px] font-mono text-slate-300">
-                      {topStarRepoScale}
+                    <span className="rounded-lg border border-dark-400 bg-dark-700/30 px-2.5 py-2 text-center">
+                      🍴 {formatCount(repo.forks)}
                     </span>
-                    <span className="px-2 py-1 rounded-full border border-dark-400 bg-dark-700/60 text-[10px] font-mono text-slate-400">
-                      Updated {formatRelativeDate(repo.pushed_at)}
+                    <span className="rounded-lg border border-dark-400 bg-dark-700/30 px-2.5 py-2 text-center">
+                      👀 {formatCount(repo.watchers || 0)}
+                    </span>
+                    <span className="rounded-lg border border-dark-400 bg-dark-700/30 px-2.5 py-2 text-center">
+                      ⚠ {formatCount(repo.open_issues_count || 0)}
                     </span>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono text-slate-500 shrink-0 sm:min-w-[240px]">
-                  <span className="rounded-lg border border-dark-400 bg-dark-700/30 px-2.5 py-2 text-center">
-                    ⭐ {formatCount(repo.stars)}
-                  </span>
-                  <span className="rounded-lg border border-dark-400 bg-dark-700/30 px-2.5 py-2 text-center">
-                    🍴 {formatCount(repo.forks)}
-                  </span>
-                  <span className="rounded-lg border border-dark-400 bg-dark-700/30 px-2.5 py-2 text-center">
-                    👀 {formatCount(repo.watchers || 0)}
-                  </span>
-                  <span className="rounded-lg border border-dark-400 bg-dark-700/30 px-2.5 py-2 text-center">
-                    ⚠ {formatCount(repo.open_issues_count || 0)}
-                  </span>
-                </div>
-              </a>
-            ))}
+              );
+            })}
           </div>
 
           {visibleRepos.length > 6 && (
