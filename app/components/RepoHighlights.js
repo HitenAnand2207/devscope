@@ -217,7 +217,6 @@ export default function RepoHighlights({ repos }) {
     );
   }, [visibleRepos]);
 
-  const hiddenCount = Math.max(0, visibleRepos.length - shownRepos.length);
   const topStarRepoScale = repoOverview.topStarRepo
     ? getRepoScale((repoOverview.topStarRepo.stars || 0) * 2 + (repoOverview.topStarRepo.forks || 0))
     : "Emerging";
@@ -226,6 +225,8 @@ export default function RepoHighlights({ repos }) {
     if (expanded) return visibleRepos.slice(0, 24);
     return visibleRepos.slice(0, 6);
   }, [visibleRepos, expanded]);
+
+  const hiddenCount = Math.max(0, visibleRepos.length - shownRepos.length);
 
   function exportShownAsCsv() {
     if (!shownRepos.length) return;
