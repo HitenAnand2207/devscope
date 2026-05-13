@@ -611,7 +611,7 @@ ${lines.join("\n")}`;
         </button>
       )}
 
-      {comparisonSummary && !compareLoading && (
+      {false && comparisonSummary && !compareLoading && (
         <div className="w-full max-w-7xl glass-card border-gradient p-5 mb-4 animate-fade-up" style={{ opacity: 0 }}>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
             <div className="min-w-0">
@@ -794,136 +794,15 @@ ${lines.join("\n")}`;
       {compareLoading && <LoadingSkeleton />}
 
       {data && !loading && compareData && !compareLoading && (
-        <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Dashboard
-            data={data}
-            analysisMeta={analysisMeta}
-            onToggleFavorite={toggleFavoriteUser}
-            isFavorite={favoriteUsers.some(
-              (u) => u.toLowerCase() === data?.profile?.login?.toLowerCase()
-            )}
-            onShare={copyShareLink}
-            onExport={downloadAnalysisJson}
-            onReset={resetAnalysis}
-            onCopyInsight={copyInsightText}
-            onCopyStats={copyStats}
-            copied={copied}
-            insightCopied={insightCopied}
-            username={data?.profile?.login || username}
-            repos={data.repositories || data.topRepositories || []}
-          />
-          <Dashboard
-            data={compareData}
-            analysisMeta={compareAnalysisMeta}
-            onToggleFavorite={toggleFavoriteUser}
-            isFavorite={favoriteUsers.some(
-              (u) => u.toLowerCase() === compareData?.profile?.login?.toLowerCase()
-            )}
-            onShare={() => {
-              const url = `${window.location.origin}?user=${encodeURIComponent(
-                compareData?.profile?.login || compareUsername
-              )}`;
-              try {
-                navigator.clipboard.writeText(url);
-                setCompareCopied(true);
-                window.setTimeout(() => setCompareCopied(false), 1400);
-              } catch {
-                setError("Could not copy link from this browser context.");
-              }
-            }}
-            onExport={() => {
-              if (!compareData?.profile?.login) return;
-              try {
-                const payload = {
-                  exportedAt: new Date().toISOString(),
-                  source: "DevScope",
-                  data: compareData,
-                };
-                const blob = new Blob([JSON.stringify(payload, null, 2)], {
-                  type: "application/json;charset=utf-8",
-                });
-                const url = URL.createObjectURL(blob);
-                const anchor = document.createElement("a");
-                anchor.href = url;
-                anchor.download = `${compareData.profile.login}-devscope-analysis.json`;
-                document.body.appendChild(anchor);
-                anchor.click();
-                document.body.removeChild(anchor);
-                URL.revokeObjectURL(url);
-              } catch {
-                setError("Could not export the analysis file.");
-              }
-            }}
-            onReset={() => {
-              setCompareUsername("");
-              setCompareData(null);
-              setCompareAnalysisMeta(null);
-              setCompareCopied(false);
-              setCompareInsightCopied(false);
-            }}
-            onCopyInsight={() => {
-              const insight = compareData?.insight;
-              if (!insight) return;
-              try {
-                navigator.clipboard.writeText(insight);
-                setCompareInsightCopied(true);
-                window.setTimeout(() => setCompareInsightCopied(false), 1400);
-              } catch {
-                setError("Could not copy insight from this browser context.");
-              }
-            }}
-            onCopyStats={() => {
-              if (!compareData) return;
-              try {
-                const { profile, stats, topLanguages } = compareData;
-                const langStr = Object.entries(topLanguages)
-                  .map(([lang, count]) => `${lang} (${count})`)
-                  .join(", ");
-
-                const summary = `DevScope Analysis for @${profile.login}
-Generated: ${new Date().toLocaleString()}
-
-PROFILE
-Name: ${profile.name || profile.login}
-Followers: ${profile.followers?.toLocaleString() || 0}
-Following: ${profile.following?.toLocaleString() || 0}
-Bio: ${profile.bio || "N/A"}
-
-STATISTICS
-Repositories: ${stats.repos}
-Total Stars: ${stats.stars}
-Average Stars/Repo: ${stats.avgStarsPerRepo}
-Total Forks: ${stats.forks}
-Productivity Score: ${stats.score}/100
-
-ACTIVITY
-Streak: ${stats.streak} weeks
-Active Last 30d: ${stats.activeRepos30d} repos
-Active Last 90d: ${stats.activeRepos90d} repos
-Active Weeks (12-week window): ${stats.activeWeeks}/12
-Archived Repos: ${stats.archivedRepos}
-
-PROFILE HEALTH
-Completeness: ${stats.profileCompleteness}%
-
-TOP LANGUAGES
-${langStr}
-
-View full analysis: ${window.location.href}`;
-
-                navigator.clipboard.writeText(summary);
-                setError("Stats copied to clipboard!");
-                window.setTimeout(() => setError(""), 2000);
-              } catch {
-                setError("Could not copy stats from this browser context.");
-              }
-            }}
-            copied={compareCopied}
-            insightCopied={compareInsightCopied}
-            username={compareData?.profile?.login || compareUsername}
-            repos={compareData.repositories || compareData.topRepositories || []}
-          />
-        </div>
+        <ProfileComparison
+          primaryData={data}
+          secondaryData={compareData}
+          primaryMeta={analysisMeta}
+          secondaryMeta={compareAnalysisMeta}
+          summary={comparisonSummary}
+          onCopySummary={copyComparisonSummary}
+          summaryCopied={compareSummaryCopied}
+        />
       )}
 
       {data && !loading && !compareData && (
@@ -969,6 +848,368 @@ View full analysis: ${window.location.href}`;
         </div>
       )}
     </main>
+  );
+}
+
+function ProfileComparison({
+  primaryData,
+  secondaryData,
+  primaryMeta,
+  secondaryMeta,
+  summary,
+  onCopySummary,
+  summaryCopied,
+}) {
+  if (!primaryData || !secondaryData || !summary) return null;
+
+  const primaryRepos = primaryData.repositories || primaryData.topRepositories || [];
+  const secondaryRepos = secondaryData.repositories || secondaryData.topRepositories || [];
+  const primaryName = primaryData.profile?.login || "Primary";
+  const secondaryName = secondaryData.profile?.login || "Secondary";
+  const repoLimit = 4;
+
+  return (
+    <section className="w-full max-w-7xl space-y-5 animate-fade-up" style={{ opacity: 0 }}>
+      <div className="glass-card border-gradient p-5 md:p-6 overflow-hidden">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+          <div className="min-w-0">
+            <p className="font-mono text-xs uppercase tracking-widest text-slate-500">
+              Comparison
+            </p>
+            <h2 className="mt-2 font-mono text-2xl md:text-3xl font-bold text-white break-words">
+              {primaryName} <span className="text-slate-500">vs</span> {secondaryName}
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm text-slate-400">
+              {summary.primaryWins} wins for {primaryName}, {summary.secondaryWins} wins for {secondaryName}, {summary.ties} ties.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-start lg:items-end gap-3 shrink-0">
+            <span className="max-w-full rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1.5 font-mono text-xs text-cyan-300">
+              {summary.verdict}
+            </span>
+            <button
+              type="button"
+              onClick={onCopySummary}
+              className="px-3 py-1.5 rounded-md border border-dark-400 text-[11px] font-mono text-slate-400 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
+            >
+              {summaryCopied ? "Summary Copied" : "Copy Summary"}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-4 items-stretch">
+          <CompareProfileCard data={primaryData} meta={primaryMeta} side="left" />
+          <div className="hidden lg:flex flex-col items-center justify-center px-2">
+            <div className="h-full w-px bg-dark-400" />
+            <span className="my-3 rounded-full border border-dark-400 bg-dark-700 px-3 py-1 font-mono text-xs text-slate-500">
+              VS
+            </span>
+            <div className="h-full w-px bg-dark-400" />
+          </div>
+          <CompareProfileCard data={secondaryData} meta={secondaryMeta} side="right" />
+        </div>
+      </div>
+
+      <div className="glass-card p-5 md:p-6 overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-2 mb-5">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-widest text-slate-500">
+              Topic by Topic
+            </p>
+          </div>
+          <p className="font-mono text-xs text-slate-500">
+            Wins: {summary.primaryWins} - {summary.secondaryWins} / {summary.ties} ties
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {summary.metrics.map((metric) => (
+            <CompareMetricRow
+              key={metric.label}
+              metric={metric}
+              primaryName={primaryName}
+              secondaryName={secondaryName}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <ComparePanel title="Language Focus">
+          <LanguageCompare
+            primaryName={primaryName}
+            secondaryName={secondaryName}
+            primaryLanguages={primaryData.topLanguages || {}}
+            secondaryLanguages={secondaryData.topLanguages || {}}
+          />
+        </ComparePanel>
+
+        <ComparePanel title="Recent Activity">
+          <ActivityCompare
+            primaryName={primaryName}
+            secondaryName={secondaryName}
+            primaryActivity={primaryData.weeklyActivity}
+            secondaryActivity={secondaryData.weeklyActivity}
+          />
+        </ComparePanel>
+      </div>
+
+      <ComparePanel title="Repository Snapshot">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <RepoSnapshot name={primaryName} repos={primaryRepos.slice(0, repoLimit)} />
+          <RepoSnapshot name={secondaryName} repos={secondaryRepos.slice(0, repoLimit)} />
+        </div>
+      </ComparePanel>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <InsightCard name={primaryName} insight={primaryData.insight} />
+        <InsightCard name={secondaryName} insight={secondaryData.insight} />
+      </div>
+    </section>
+  );
+}
+
+function CompareProfileCard({ data, meta, side }) {
+  const { profile, stats, topLanguages } = data;
+  const joinYear = profile.created_at ? new Date(profile.created_at).getFullYear() : "N/A";
+  const primaryLanguage = Object.keys(topLanguages || {})[0] || "Unknown";
+  const analyzedAt = meta?.analyzedAt ? new Date(meta.analyzedAt).toLocaleTimeString() : null;
+
+  return (
+    <div className="rounded-xl border border-dark-400 bg-dark-700/45 p-4 md:p-5 min-w-0">
+      <div className={`flex flex-col sm:flex-row gap-4 ${side === "right" ? "lg:flex-row-reverse lg:text-right" : ""}`}>
+        <img
+          src={profile.avatar_url}
+          alt={profile.login}
+          width={76}
+          height={76}
+          className="h-[76px] w-[76px] shrink-0 rounded-full ring-2 ring-cyan-400/35 object-cover"
+        />
+        <div className="min-w-0 flex-1">
+          <h3 className="font-mono text-xl font-bold text-white break-words">
+            {profile.name || profile.login}
+          </h3>
+          <p className="mt-1 font-mono text-sm text-cyan-300 break-all">@{profile.login}</p>
+          <p className="mt-3 text-sm text-slate-400 leading-relaxed line-clamp-3">
+            {profile.bio || "No bio available."}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <MiniStat label="Repos" value={stats.repos} />
+        <MiniStat label="Stars" value={stats.stars} />
+        <MiniStat label="Followers" value={profile.followers || 0} />
+        <MiniStat label="Score" value={`${stats.score}/100`} />
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2 font-mono text-[11px] text-slate-400">
+        <span className="rounded-full border border-cyan-400/25 bg-cyan-400/10 px-2.5 py-1 text-cyan-300">
+          {primaryLanguage}
+        </span>
+        <span className="rounded-full border border-dark-400 px-2.5 py-1">since {joinYear}</span>
+        {analyzedAt && <span className="rounded-full border border-dark-400 px-2.5 py-1">analyzed {analyzedAt}</span>}
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }) {
+  return (
+    <div className="rounded-lg border border-dark-400 bg-dark-800/40 px-3 py-2 min-w-0">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500 truncate">{label}</p>
+      <p className="mt-1 font-mono text-lg font-bold text-cyan-300 truncate">{value?.toLocaleString?.() ?? value}</p>
+    </div>
+  );
+}
+
+function CompareMetricRow({ metric, primaryName, secondaryName }) {
+  const max = Math.max(metric.primaryValue, metric.secondaryValue, 1);
+  const primaryWidth = `${Math.max(4, (metric.primaryValue / max) * 100)}%`;
+  const secondaryWidth = `${Math.max(4, (metric.secondaryValue / max) * 100)}%`;
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_150px_1fr] gap-3 lg:gap-4 items-center rounded-xl border border-dark-400 bg-dark-700/35 p-3 md:p-4">
+      <MetricSide
+        name={primaryName}
+        value={metric.primaryValue}
+        width={primaryWidth}
+        active={metric.winner === "primary"}
+        align="left"
+      />
+      <div className="order-first lg:order-none text-left lg:text-center">
+        <p className="font-mono text-xs uppercase tracking-widest text-slate-500">{metric.label}</p>
+        <p className="mt-1 font-mono text-[11px] text-slate-500">
+          {metric.winner === "tie" ? "Tie" : metric.winner === "primary" ? `${shortenHandle(primaryName, 14)} leads` : `${shortenHandle(secondaryName, 14)} leads`}
+        </p>
+      </div>
+      <MetricSide
+        name={secondaryName}
+        value={metric.secondaryValue}
+        width={secondaryWidth}
+        active={metric.winner === "secondary"}
+        align="right"
+      />
+    </div>
+  );
+}
+
+function MetricSide({ name, value, width, active, align }) {
+  return (
+    <div className="min-w-0">
+      <div className={`mb-2 flex items-center gap-2 ${align === "right" ? "justify-between lg:justify-end" : "justify-between"}`}>
+        <span className="font-mono text-xs text-slate-400 truncate" title={name}>{shortenHandle(name, 22)}</span>
+        <span className={`font-mono text-sm font-bold ${active ? "text-cyan-300" : "text-slate-300"}`}>
+          {value.toLocaleString()}
+        </span>
+      </div>
+      <div className="h-2 rounded-full bg-dark-600 overflow-hidden">
+        <div
+          className={`h-full rounded-full ${active ? "bg-cyan-400" : "bg-slate-500/60"}`}
+          style={{ width }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ComparePanel({ title, children }) {
+  return (
+    <div className="glass-card p-5 md:p-6 overflow-hidden">
+      <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500 mb-5">
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
+}
+
+function LanguageCompare({ primaryName, secondaryName, primaryLanguages, secondaryLanguages }) {
+  const languages = Array.from(
+    new Set([...Object.keys(primaryLanguages), ...Object.keys(secondaryLanguages)])
+  ).slice(0, 7);
+  const max = Math.max(
+    1,
+    ...languages.map((language) =>
+      Math.max(primaryLanguages[language] || 0, secondaryLanguages[language] || 0)
+    )
+  );
+
+  if (!languages.length) {
+    return <p className="text-sm text-slate-500">No language data available.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-[1fr_80px_1fr] gap-3 font-mono text-[11px] uppercase tracking-widest text-slate-500">
+        <span className="truncate" title={primaryName}>{shortenHandle(primaryName, 18)}</span>
+        <span className="text-center">Language</span>
+        <span className="text-right truncate" title={secondaryName}>{shortenHandle(secondaryName, 18)}</span>
+      </div>
+      {languages.map((language) => (
+        <div key={language} className="grid grid-cols-[1fr_80px_1fr] gap-3 items-center">
+          <HorizontalValue value={primaryLanguages[language] || 0} max={max} reverse />
+          <span className="text-center text-xs font-mono text-slate-300 truncate" title={language}>
+            {language}
+          </span>
+          <HorizontalValue value={secondaryLanguages[language] || 0} max={max} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HorizontalValue({ value, max, reverse = false }) {
+  const width = `${Math.max(value > 0 ? 6 : 0, (value / max) * 100)}%`;
+  return (
+    <div className={`flex items-center gap-2 ${reverse ? "flex-row-reverse" : ""}`}>
+      <span className="w-7 shrink-0 font-mono text-xs text-slate-400">{value}</span>
+      <div className={`h-2 flex-1 rounded-full bg-dark-600 overflow-hidden ${reverse ? "flex justify-end" : ""}`}>
+        <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-400" style={{ width }} />
+      </div>
+    </div>
+  );
+}
+
+function ActivityCompare({ primaryName, secondaryName, primaryActivity, secondaryActivity }) {
+  const primaryValues = primaryActivity?.data || [];
+  const secondaryValues = secondaryActivity?.data || [];
+  const labels = primaryActivity?.labels || secondaryActivity?.labels || [];
+  const max = Math.max(1, ...primaryValues, ...secondaryValues);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <ActivityMiniChart name={primaryName} values={primaryValues} labels={labels} max={max} />
+        <ActivityMiniChart name={secondaryName} values={secondaryValues} labels={labels} max={max} />
+      </div>
+    </div>
+  );
+}
+
+function ActivityMiniChart({ name, values, labels, max }) {
+  return (
+    <div className="min-w-0 rounded-xl border border-dark-400 bg-dark-700/35 p-3">
+      <p className="mb-3 font-mono text-xs text-slate-300 truncate" title={name}>{name}</p>
+      <div className="flex h-32 items-end gap-1.5">
+        {values.map((value, index) => (
+          <div key={`${labels[index] || index}-${index}`} className="flex-1 min-w-0">
+            <div
+              className="rounded-t bg-cyan-400/80"
+              title={`${labels[index] || "Week"}: ${value}`}
+              style={{ height: `${Math.max(value > 0 ? 8 : 2, (value / max) * 100)}%` }}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RepoSnapshot({ name, repos }) {
+  return (
+    <div className="min-w-0">
+      <p className="mb-3 font-mono text-xs uppercase tracking-widest text-slate-500 truncate" title={name}>
+        {name}
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {repos.map((repo) => (
+          <a
+            key={repo.id}
+            href={repo.html_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-w-0 rounded-xl border border-dark-400 bg-dark-700/35 p-3 hover:border-cyan-400/40 transition-colors"
+          >
+            <p className="font-mono text-sm font-semibold text-white truncate" title={repo.name}>{repo.name}</p>
+            <p className="mt-2 min-h-[34px] text-xs text-slate-400 line-clamp-2">
+              {repo.description || "No description provided"}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2 font-mono text-[11px] text-slate-400">
+              <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-cyan-300">
+                {repo.language || "Unknown"}
+              </span>
+              <span>{repo.stars || 0} stars</span>
+              <span>{repo.forks || 0} forks</span>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InsightCard({ name, insight }) {
+  return (
+    <div className="glass-card p-5 md:p-6 min-w-0">
+      <p className="font-mono text-xs uppercase tracking-widest text-slate-500 mb-4 truncate" title={name}>
+        AI Insight: {name}
+      </p>
+      <p className="border-l-2 border-cyan-400/40 pl-4 text-sm leading-relaxed text-slate-300">
+        "{insight || "No insight available."}"
+      </p>
+    </div>
   );
 }
 
