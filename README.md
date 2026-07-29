@@ -1,5 +1,8 @@
 # 🔭 DevScope — Developer Activity Analyzer
 
+[![Build](https://github.com/<your-org>/devscope/actions/workflows/ci.yml/badge.svg)](https://github.com/<your-org>/devscope/actions)
+[![Vercel](https://img.shields.io/badge/deploy-vercel-000000?logo=vercel)](https://vercel.com)
+
 A clean, modern web app that analyzes any GitHub developer's profile and displays insights including language distribution, activity charts, productivity score, and an AI-generated developer insight.
 
 ---
@@ -152,6 +155,19 @@ Follow the prompts. When asked for environment variables, add your `GITHUB_TOKEN
 4. Click **Deploy** — done! 🎉
 
 ---
+
+## 🎯 Live Demo
+
+If deployed on Vercel, add the public demo URL here. For local testing, run `npm run dev` and open http://localhost:3000.
+
+## 🤝 Contributing
+
+Contributions welcome — open an issue or PR. For quick wins:
+
+- Improve component accessibility and keyboard navigation.
+- Add unit tests for `app/utils/github.js` and `app/utils/aiInsight.js`.
+- Add Storybook or visual regression tests for components.
+
 
 ## 📦 Tech Stack
 

@@ -8,6 +8,7 @@ import ProductivityMeter from "./components/ProductivityMeter";
 import LoadingSkeleton from "./components/LoadingSkeleton";
 import RepoHighlights from "./components/RepoHighlights";
 import ExportShare from "./components/ExportShare";
+import ThemeToggle from "./components/ThemeToggle";
 
 function isValidGithubUsername(input) {
   const value = input.trim();
@@ -468,7 +469,10 @@ ${lines.join("\n")}`;
 
   return (
     <main className="relative z-10 min-h-screen px-4 py-12 flex flex-col items-center">
-      <header className="text-center mb-12 animate-fade-up" style={{ opacity: 0 }}>
+      <header className="text-center mb-12 animate-fade-up relative" style={{ opacity: 0 }}>
+        <div className="absolute right-0 top-0 mt-6 mr-6">
+          <ThemeToggle />
+        </div>
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-400/20 bg-cyan-400/5 mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
           <span className="font-mono text-xs text-cyan-400 tracking-widest uppercase">

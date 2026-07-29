@@ -76,8 +76,8 @@ export async function POST(request) {
       profileCompleteness,
     });
 
-    // ── Return full payload ───────────────────
-    return NextResponse.json({
+    // ── Return full payload (cache on CDN for short period) ──
+    const payload = {
       profile: {
         login: user.login,
         name: user.name,
@@ -111,6 +111,14 @@ export async function POST(request) {
       topRepositories,
       repositories,
       insight,
+    };
+
+    return NextResponse.json(payload, {
+      status: 200,
+      headers: {
+        // Let Vercel / CDN cache the analysis for a short time while allowing revalidation
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      },
     });
   } catch (err) {
     // Handle known errors with friendly messages
