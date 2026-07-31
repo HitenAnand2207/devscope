@@ -27,6 +27,50 @@ import {
 } from "../../utils/github";
 import { generateInsight } from "../../utils/aiInsight";
 
+// Module-level maps (persist for the lifetime of the server process)
+const _cache = new Map(); // username -> { payload, expiresAt }
+const _rate = new Map(); // ip -> { count, resetAt }
+
+function getClientIp(request) {
+  try {
+    // Prefer x-forwarded-for, fallback to connection metadata if available
+    const xf = request.headers.get('x-forwarded-for');
+    if (xf) return xf.split(',')[0].trim();
+    const realIp = request.headers.get('x-real-ip');
+    if (realIp) return realIp;
+  } catch (e) {
+    // ignore
+  }
+  return 'unknown';
+}
+
+function checkRateLimit(ip, limit = 60, windowMs = 60 * 1000) {
+  const now = Date.now();
+  const entry = _rate.get(ip) || { count: 0, resetAt: now + windowMs };
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + windowMs;
+  }
+  entry.count += 1;
+  _rate.set(ip, entry);
+  return { ok: entry.count <= limit, remaining: Math.max(0, limit - entry.count), resetAt: entry.resetAt };
+}
+
+function getCached(username) {
+  const now = Date.now();
+  const entry = _cache.get(username);
+  if (!entry) return null;
+  if (entry.expiresAt < now) {
+    _cache.delete(username);
+    return null;
+  }
+  return entry.payload;
+}
+
+function setCached(username, payload, ttlMs = 60 * 1000) {
+  _cache.set(username, { payload, expiresAt: Date.now() + ttlMs });
+}
+
 export async function POST(request) {
   try {
     // ── Parse request body ────────────────────
@@ -40,6 +84,19 @@ export async function POST(request) {
     }
 
     const cleanUsername = username.trim().toLowerCase();
+
+    // Rate limiting per IP
+    const ip = getClientIp(request);
+    const rl = checkRateLimit(ip, 40, 60 * 1000); // 40 requests / minute
+    if (!rl.ok) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429, headers: { 'X-RateLimit-Remaining': '0' } });
+    }
+
+    // Check in-process cache
+    const cached = getCached(cleanUsername);
+    if (cached) {
+      return NextResponse.json(cached, { status: 200, headers: { 'X-Cache': 'HIT' } });
+    }
 
     // ── Fetch GitHub data in parallel ─────────
     const [user, repos] = await Promise.all([
@@ -112,6 +169,9 @@ export async function POST(request) {
       repositories,
       insight,
     };
+
+    // Cache result for a short time to reduce GitHub/API calls
+    try { setCached(cleanUsername, payload, 60 * 1000); } catch (e) { /* ignore */ }
 
     return NextResponse.json(payload, {
       status: 200,
