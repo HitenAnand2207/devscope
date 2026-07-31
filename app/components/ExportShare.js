@@ -16,6 +16,8 @@ import {
 export default function ExportShare({ username, data, analysisMeta, repos = [] }) {
   const [showMenu, setShowMenu] = useState(false);
   const [copied, setCopied] = useState(null);
+  const [permalinkUrl, setPermalinkUrl] = useState(null);
+  const [creatingPermalink, setCreatingPermalink] = useState(false);
 
   if (!data) return null;
 
@@ -41,6 +43,39 @@ export default function ExportShare({ username, data, analysisMeta, repos = [] }
     await copyToClipboard(badge);
     setCopied('badge');
     setTimeout(() => setCopied(null), 2000);
+  };
+
+  const handleCreatePermalink = async () => {
+    try {
+      setCreatingPermalink(true);
+      const payload = {
+        profile: data.profile,
+        stats: data.stats,
+        languages: data.languages,
+        topRepositories: data.topRepositories || [],
+        repositories: repos,
+      };
+
+      const res = await fetch('/api/permalink', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload, meta: { username, generatedAt: new Date().toISOString() } }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.url) {
+        setPermalinkUrl(json.url);
+        await copyToClipboard(json.url);
+        setCopied('link');
+        setTimeout(() => setCopied(null), 2000);
+      } else {
+        console.error('Permalink creation failed', json);
+      }
+    } catch (err) {
+      console.error('Permalink error', err);
+    } finally {
+      setCreatingPermalink(false);
+    }
   };
 
   const handleExportJSON = () => {
@@ -98,6 +133,18 @@ export default function ExportShare({ username, data, analysisMeta, repos = [] }
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.658 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
                 {copied === 'link' ? '✓ Copied' : 'Copy Share Link'}
+              </button>
+
+              <button
+                onClick={handleCreatePermalink}
+                disabled={creatingPermalink}
+                className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-slate-700 rounded transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8v8" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 7L10 18" />
+                </svg>
+                {creatingPermalink ? 'Creating...' : (permalinkUrl ? 'Permalink copied ✓' : 'Create Permalink')}
               </button>
 
               <button
