@@ -1,4 +1,5 @@
 import "./globals.css";
+import AuthButton from './components/AuthButton';
 
 // Richer metadata for SEO, social cards and PWAs
 export const metadata = {
@@ -24,7 +25,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="noise-bg antialiased">{children}</body>
+      <body className="noise-bg antialiased">{children}<AuthButton /></body>
     </html>
   );
 }
