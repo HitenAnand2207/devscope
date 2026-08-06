@@ -8,6 +8,53 @@
 //  fetch-based call with Groq's base URL.
 // ─────────────────────────────────────────────
 
+export function buildActionableInsights(profileData) {
+  const { stats = {}, profile = {}, topLanguages = {} } = profileData || {};
+  const insights = [];
+
+  if ((stats.profileCompleteness || 0) < 50) {
+    insights.push({
+      title: 'Profile completeness',
+      detail: 'Add a bio, company, location, and website links to strengthen discoverability.',
+      priority: 'high',
+    });
+  }
+
+  if ((stats.activeRepos90d || 0) < 3) {
+    insights.push({
+      title: 'Recent momentum',
+      detail: 'Ship more frequently in the last 90 days to show sustained project activity.',
+      priority: 'medium',
+    });
+  }
+
+  if ((stats.streak || 0) < 2) {
+    insights.push({
+      title: 'Consistency cadence',
+      detail: 'Maintain a weekly routine to improve streak strength and contribution visibility.',
+      priority: 'medium',
+    });
+  }
+
+  if (Object.keys(topLanguages).length >= 2) {
+    insights.push({
+      title: 'Stack depth',
+      detail: 'Lean into your strongest language stack to reinforce your public signal.',
+      priority: 'low',
+    });
+  }
+
+  if (!profile.followers || profile.followers < 20) {
+    insights.push({
+      title: 'Community reach',
+      detail: 'Engage with projects and collaborators to grow your network and increase visibility.',
+      priority: 'low',
+    });
+  }
+
+  return insights.slice(0, 4);
+}
+
 export async function generateInsight(userData) {
   // If no Groq key, return a smart rule-based insight instead
   if (!process.env.GROQ_API_KEY) {

@@ -9,6 +9,7 @@ import LoadingSkeleton from "./components/LoadingSkeleton";
 import RepoHighlights from "./components/RepoHighlights";
 import ExportShare from "./components/ExportShare";
 import ThemeToggle from "./components/ThemeToggle";
+import { buildActionableInsights } from "./utils/aiInsight";
 
 function isValidGithubUsername(input) {
   const value = input.trim();
@@ -125,6 +126,10 @@ export default function Home() {
   const [compareCopied, setCompareCopied] = useState(false);
   const [compareInsightCopied, setCompareInsightCopied] = useState(false);
   const [compareSummaryCopied, setCompareSummaryCopied] = useState(false);
+  const actionableInsights = useMemo(() => {
+    if (!data) return [];
+    return buildActionableInsights(data);
+  }, [data]);
 
   useEffect(() => {
     try {
@@ -1458,6 +1463,28 @@ function Dashboard({
           ]}
         />
       </div>
+
+      {actionableInsights.length > 0 && (
+        <div className="glass-card p-6 animate-fade-up delay-550" style={{ opacity: 0 }}>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500">Next Steps</h3>
+            <span className="text-[11px] font-mono text-cyan-400">Actionable growth cues</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {actionableInsights.map((insight) => (
+              <div key={insight.title} className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <h4 className="text-sm font-semibold text-slate-200">{insight.title}</h4>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider ${insight.priority === 'high' ? 'bg-rose-500/15 text-rose-300' : insight.priority === 'medium' ? 'bg-amber-500/15 text-amber-300' : 'bg-cyan-500/15 text-cyan-300'}`}>
+                    {insight.priority}
+                  </span>
+                </div>
+                <p className="text-sm text-slate-400 leading-relaxed">{insight.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <RepoHighlights repos={repositories || topRepositories || []} />
 
