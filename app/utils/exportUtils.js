@@ -213,6 +213,13 @@ export function exportAsHTML(data, analysisMeta, filename = 'devscope-report.htm
   downloadFile(blob, filename);
 }
 
+// Export markdown summary as a file
+export function exportAsMarkdown(data, filename = 'devscope-report.md') {
+  const markdown = generateMarkdownSummary(data);
+  const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8;' });
+  downloadFile(blob, filename);
+}
+
 // Generate markdown summary
 export function generateMarkdownSummary(data) {
   if (!data) return '';
