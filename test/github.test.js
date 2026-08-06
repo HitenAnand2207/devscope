@@ -10,6 +10,7 @@ import {
   calcConsistencyStats,
   calcWeeklyActivity,
 } from '../app/utils/github';
+import { generateMarkdownSummary } from '../app/utils/exportUtils';
 
 const sampleRepos = [
   { id: 1, name: 'a', language: 'JavaScript', stargazers_count: 5, forks_count: 1, pushed_at: new Date().toISOString(), archived: false, watchers_count: 2, size: 10, created_at: new Date().toISOString(), html_url: 'https://example.com' },
@@ -56,5 +57,12 @@ describe('GitHub utils', () => {
     const user = { name: 'X', bio: 'b', location: null, blog: '', company: '', twitter_username: '' };
     expect(calcProfileCompleteness(user)).toBeGreaterThanOrEqual(0);
     expect(calcProfileCompleteness(user)).toBeLessThanOrEqual(100);
+  });
+
+  it('generates markdown summaries for export', () => {
+    const summary = generateMarkdownSummary({ profile: { login: 'octocat' }, stats: { repos: 3, stars: 8, forks: 2, score: 74 }, languages: { JavaScript: 2 } });
+    expect(summary).toContain('DevScope Analysis');
+    expect(summary).toContain('octocat');
+    expect(summary).toContain('JavaScript');
   });
 });
