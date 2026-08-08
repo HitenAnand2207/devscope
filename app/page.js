@@ -10,6 +10,7 @@ import RepoHighlights from "./components/RepoHighlights";
 import ExportShare from "./components/ExportShare";
 import ThemeToggle from "./components/ThemeToggle";
 import { buildActionableInsights } from "./utils/aiInsight";
+import { appendAnalysisHistory } from "./utils/analysisHistory";
 
 function isValidGithubUsername(input) {
   const value = input.trim();
@@ -19,6 +20,7 @@ function isValidGithubUsername(input) {
 const RECENT_USERS_KEY = "devscope.recentUsers";
 const FAVORITE_USERS_KEY = "devscope.favoriteUsers";
 const LAST_ANALYZED_USER_KEY = "devscope.lastAnalyzedUser";
+const ANALYSIS_HISTORY_KEY = "devscope.analysisHistory";
 const SAMPLE_USERS = [
   "torvalds",
   "gaearon",
@@ -126,6 +128,8 @@ export default function Home() {
   const [compareCopied, setCompareCopied] = useState(false);
   const [compareInsightCopied, setCompareInsightCopied] = useState(false);
   const [compareSummaryCopied, setCompareSummaryCopied] = useState(false);
+  const [insightsCopied, setInsightsCopied] = useState(false);
+  const [analysisHistory, setAnalysisHistory] = useState([]);
   const actionableInsights = useMemo(() => {
     if (!data) return [];
     return buildActionableInsights(data);
@@ -157,6 +161,15 @@ export default function Home() {
       }
     } catch {
       setLastAnalyzedUser("");
+    }
+
+    try {
+      const cachedHistory = JSON.parse(localStorage.getItem(ANALYSIS_HISTORY_KEY) || "[]");
+      if (Array.isArray(cachedHistory)) {
+        setAnalysisHistory(cachedHistory.slice(0, 8));
+      }
+    } catch {
+      setAnalysisHistory([]);
     }
 
     const params = new URLSearchParams(window.location.search);
@@ -213,6 +226,13 @@ export default function Home() {
         localStorage.setItem(RECENT_USERS_KEY, JSON.stringify(nextUsers));
         setLastAnalyzedUser(cleanUsername);
         localStorage.setItem(LAST_ANALYZED_USER_KEY, cleanUsername);
+
+        const nextHistory = appendAnalysisHistory(analysisHistory, {
+          username: cleanUsername,
+          analyzedAt: new Date().toISOString(),
+        }, 8);
+        setAnalysisHistory(nextHistory);
+        localStorage.setItem(ANALYSIS_HISTORY_KEY, JSON.stringify(nextHistory));
 
         const url = new URL(window.location.href);
         url.searchParams.set("user", cleanUsername);
@@ -363,6 +383,23 @@ export default function Home() {
       window.setTimeout(() => setInsightCopied(false), 1400);
     } catch {
       setError("Could not copy insight from this browser context.");
+    }
+  }
+
+  async function copyAllInsights() {
+    if (!data) return;
+
+    try {
+      const combined = [
+        data.insight,
+        ...(actionableInsights || []).map((item) => `${item.title}: ${item.detail}`),
+      ].filter(Boolean);
+
+      await navigator.clipboard.writeText(combined.join("\n\n"));
+      setInsightsCopied(true);
+      window.setTimeout(() => setInsightsCopied(false), 1400);
+    } catch {
+      setError("Could not copy the insight bundle from this browser context.");
     }
   }
 
@@ -719,6 +756,41 @@ ${lines.join("\n")}`;
           >
             Resume Last: {lastAnalyzedUser}
           </button>
+        </div>
+      )}
+
+      {!loading && (analysisHistory.length > 0 || recentUsers.length > 0) && (
+        <div className="w-full max-w-xl mb-8 animate-fade-up" style={{ opacity: 0 }}>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-mono uppercase tracking-widest text-slate-500">
+              Analysis History
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setAnalysisHistory([]);
+                localStorage.removeItem(ANALYSIS_HISTORY_KEY);
+              }}
+              className="text-xs font-mono text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              Clear History
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {analysisHistory.map((entry) => (
+              <button
+                key={`${entry.username}-${entry.analyzedAt}`}
+                type="button"
+                onClick={() => {
+                  setUsername(entry.username);
+                  analyzeUsername(entry.username);
+                }}
+                className="px-3 py-1.5 rounded-full border border-cyan-400/20 text-cyan-300 font-mono text-xs hover:border-cyan-400/60 hover:text-cyan-200 transition-all"
+              >
+                {entry.username}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -1499,13 +1571,22 @@ function Dashboard({
               AI Developer Insight
             </h3>
           </div>
-          <button
-            type="button"
-            onClick={onCopyInsight}
-            className="px-2.5 py-1 rounded-md border border-dark-400 text-[11px] font-mono text-slate-400 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
-          >
-            {insightCopied ? "Copied" : "Copy Insight"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={copyAllInsights}
+              className="px-2.5 py-1 rounded-md border border-dark-400 text-[11px] font-mono text-slate-400 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
+            >
+              {insightsCopied ? "Bundled" : "Copy All"}
+            </button>
+            <button
+              type="button"
+              onClick={onCopyInsight}
+              className="px-2.5 py-1 rounded-md border border-dark-400 text-[11px] font-mono text-slate-400 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
+            >
+              {insightCopied ? "Copied" : "Copy Insight"}
+            </button>
+          </div>
         </div>
         <p className="text-slate-300 leading-relaxed text-sm md:text-base italic border-l-2 border-cyan-400/40 pl-4">
           "{insight}"
