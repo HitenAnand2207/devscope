@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import StatsCard from "./components/StatsCard";
 import LanguageChart from "./components/LanguageChart";
 import LanguageBreakdown from "./components/LanguageBreakdown";
@@ -11,6 +11,7 @@ import ExportShare from "./components/ExportShare";
 import ThemeToggle from "./components/ThemeToggle";
 import { buildActionableInsights } from "./utils/aiInsight";
 import { appendAnalysisHistory } from "./utils/analysisHistory";
+import { generateComparisonLink } from "./utils/exportUtils";
 
 function isValidGithubUsername(input) {
   const value = input.trim();
@@ -173,10 +174,27 @@ export default function Home() {
     }
 
     const params = new URLSearchParams(window.location.search);
-    const fromUrl = params.get("user");
-    if (fromUrl && isValidGithubUsername(fromUrl)) {
-      setUsername(fromUrl);
-      analyzeUsername(fromUrl);
+    const primaryFromUrl = params.get("user") || params.get("compare");
+    const secondaryFromUrl = params.get("vs");
+
+    if (primaryFromUrl && isValidGithubUsername(primaryFromUrl)) {
+      setUsername(primaryFromUrl);
+    }
+
+    if (secondaryFromUrl && isValidGithubUsername(secondaryFromUrl)) {
+      setCompareUsername(secondaryFromUrl);
+    }
+
+    if (
+      primaryFromUrl &&
+      secondaryFromUrl &&
+      isValidGithubUsername(primaryFromUrl) &&
+      isValidGithubUsername(secondaryFromUrl)
+    ) {
+      analyzeUsername(primaryFromUrl);
+      analyzeCompareUsername(secondaryFromUrl);
+    } else if (primaryFromUrl && isValidGithubUsername(primaryFromUrl)) {
+      analyzeUsername(primaryFromUrl);
     }
   }, []);
 
@@ -197,6 +215,12 @@ export default function Home() {
     setError("");
     setData(null);
     setAnalysisMeta(null);
+    setCompareUsername("");
+    setCompareData(null);
+    setCompareAnalysisMeta(null);
+    setCompareCopied(false);
+    setCompareInsightCopied(false);
+    setCompareSummaryCopied(false);
 
     try {
       const res = await fetch("/api/analyze", {
@@ -236,6 +260,8 @@ export default function Home() {
 
         const url = new URL(window.location.href);
         url.searchParams.set("user", cleanUsername);
+        url.searchParams.delete("compare");
+        url.searchParams.delete("vs");
         window.history.replaceState({}, "", url.toString());
       }
     } catch {
@@ -289,6 +315,15 @@ export default function Home() {
           durationMs,
         });
         setCompareUsername(cleanUsername);
+
+        const primaryUser = data?.profile?.login || username.trim();
+        if (primaryUser) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("user");
+          url.searchParams.set("compare", primaryUser);
+          url.searchParams.set("vs", cleanUsername);
+          window.history.replaceState({}, "", url.toString());
+        }
       }
     } catch {
       setError("Network error. Please check your connection.");
@@ -362,9 +397,12 @@ export default function Home() {
     setCompareAnalysisMeta(null);
     setCompareCopied(false);
     setCompareInsightCopied(false);
+    setCompareSummaryCopied(false);
 
     const url = new URL(window.location.href);
     url.searchParams.delete("user");
+    url.searchParams.delete("compare");
+    url.searchParams.delete("vs");
     window.history.replaceState({}, "", url.toString());
   }
 
@@ -504,6 +542,45 @@ ${lines.join("\n")}`;
       window.setTimeout(() => setCompareSummaryCopied(false), 1400);
     } catch {
       setError("Could not copy comparison summary from this browser context.");
+    }
+  }
+
+  async function copyComparisonLink() {
+    if (!comparisonSummary) return;
+
+    try {
+      const link = generateComparisonLink(
+        comparisonSummary.primaryName,
+        comparisonSummary.secondaryName
+      );
+      await navigator.clipboard.writeText(link);
+      setCompareCopied(true);
+      window.setTimeout(() => setCompareCopied(false), 1400);
+    } catch {
+      setError("Could not copy comparison link from this browser context.");
+    }
+  }
+
+  async function copyComparisonNotes() {
+    if (!comparisonSummary || !data || !compareData) return;
+
+    try {
+      const notes = [
+        "DevScope Comparison Notes",
+        `${comparisonSummary.primaryName} vs ${comparisonSummary.secondaryName}`,
+        `Verdict: ${comparisonSummary.verdict}`,
+        `Wins: ${comparisonSummary.primaryName} ${comparisonSummary.primaryWins} - ${comparisonSummary.secondaryName} ${comparisonSummary.secondaryWins}`,
+        `Ties: ${comparisonSummary.ties}`,
+        "",
+        `Primary Insight: ${data.insight || "No insight available."}`,
+        `Secondary Insight: ${compareData.insight || "No insight available."}`,
+      ].join("\n");
+
+      await navigator.clipboard.writeText(notes);
+      setCompareInsightCopied(true);
+      window.setTimeout(() => setCompareInsightCopied(false), 1400);
+    } catch {
+      setError("Could not copy comparison notes from this browser context.");
     }
   }
 
@@ -657,93 +734,6 @@ ${lines.join("\n")}`;
         </button>
       )}
 
-      {false && comparisonSummary && !compareLoading && (
-        <div className="w-full max-w-7xl glass-card border-gradient p-5 mb-4 animate-fade-up" style={{ opacity: 0 }}>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-            <div className="min-w-0">
-              <h3 className="font-mono text-xs uppercase tracking-widest text-slate-500 mb-1">
-                Comparison Summary
-              </h3>
-              <p className="text-sm text-slate-300 truncate" title={`${comparisonSummary.primaryName} vs ${comparisonSummary.secondaryName}`}>
-                {shortenHandle(comparisonSummary.primaryName, 16)} vs {shortenHandle(comparisonSummary.secondaryName, 16)}
-              </p>
-            </div>
-            <div
-              className="max-w-full md:max-w-[320px] px-3 py-1.5 rounded-full border border-cyan-400/30 bg-cyan-400/10 text-cyan-300 font-mono text-xs truncate"
-              title={comparisonSummary.verdict}
-            >
-              {comparisonSummary.verdict}
-            </div>
-          </div>
-
-          <div className="flex justify-end mb-3">
-            <button
-              type="button"
-              onClick={copyComparisonSummary}
-              className="px-3 py-1.5 rounded-md border border-dark-400 text-[11px] font-mono text-slate-400 hover:border-cyan-400/40 hover:text-cyan-400 transition-colors"
-            >
-              {compareSummaryCopied ? "Summary Copied" : "Copy Summary"}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
-            {comparisonSummary.metrics.map((metric) => {
-              const primaryLabel = metric.primaryValue.toLocaleString();
-              const secondaryLabel = metric.secondaryValue.toLocaleString();
-
-              return (
-                <div key={metric.label} className="rounded-xl border border-dark-400 bg-dark-700/30 p-4 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="font-mono text-xs uppercase tracking-widest text-slate-500">
-                      {metric.label}
-                    </span>
-                    <span
-                      className="max-w-[120px] text-[10px] font-mono px-2 py-0.5 rounded-full border border-dark-400 text-slate-400 truncate"
-                      title={
-                        metric.winner === "tie"
-                          ? "Tie"
-                          : metric.winner === "primary"
-                          ? comparisonSummary.primaryName
-                          : comparisonSummary.secondaryName
-                      }
-                    >
-                      {metric.winner === "tie"
-                        ? "Tie"
-                        : metric.winner === "primary"
-                        ? shortenHandle(comparisonSummary.primaryName, 14)
-                        : shortenHandle(comparisonSummary.secondaryName, 14)}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-sm font-mono">
-                    <div className="min-w-0">
-                      <div className="text-slate-300 text-[11px] truncate" title={comparisonSummary.primaryName}>
-                        {shortenHandle(comparisonSummary.primaryName, 14)}
-                      </div>
-                      <div className={metric.winner === "primary" ? "text-cyan-300" : "text-slate-500"}>
-                        {primaryLabel}
-                      </div>
-                    </div>
-                    <div className="text-right min-w-0">
-                      <div className="text-slate-300 text-[11px] truncate" title={comparisonSummary.secondaryName}>
-                        {shortenHandle(comparisonSummary.secondaryName, 14)}
-                      </div>
-                      <div className={metric.winner === "secondary" ? "text-cyan-300" : "text-slate-500"}>
-                        {secondaryLabel}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <p className="mt-4 text-xs font-mono text-slate-500 break-words">
-            Wins: {shortenHandle(comparisonSummary.primaryName, 16)} {comparisonSummary.primaryWins} - {shortenHandle(comparisonSummary.secondaryName, 16)} {comparisonSummary.secondaryWins} · {comparisonSummary.ties} ties
-          </p>
-        </div>
-      )}
-
       {!loading && !data && lastAnalyzedUser && (
         <div className="w-full max-w-xl mb-8 animate-fade-up" style={{ opacity: 0 }}>
           <button
@@ -882,7 +872,11 @@ ${lines.join("\n")}`;
           secondaryMeta={compareAnalysisMeta}
           summary={comparisonSummary}
           onCopySummary={copyComparisonSummary}
+          onCopyLink={copyComparisonLink}
+          onCopyNotes={copyComparisonNotes}
           summaryCopied={compareSummaryCopied}
+          linkCopied={compareCopied}
+          notesCopied={compareInsightCopied}
         />
       )}
 
