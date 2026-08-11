@@ -7,6 +7,11 @@ A clean, modern web app that analyzes any GitHub developer's profile and display
 
 ---
 
+## Recent changes
+
+- 2026-08-11: Improved the API analyze route to add GET support, better IP parsing, and rate-limit headers.
+
+
 ## ✨ Features
 
 - GitHub profile (avatar, bio, followers)
