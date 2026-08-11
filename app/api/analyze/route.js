@@ -35,9 +35,13 @@ function getClientIp(request) {
   try {
     // Prefer x-forwarded-for, fallback to connection metadata if available
     const xf = request.headers.get('x-forwarded-for');
-    if (xf) return xf.split(',')[0].trim();
+    if (xf) {
+      const first = xf.split(',')[0].trim();
+      // strip IPv6 prefix if present
+      return first.replace(/^::ffff:/, '');
+    }
     const realIp = request.headers.get('x-real-ip');
-    if (realIp) return realIp;
+    if (realIp) return realIp.replace(/^::ffff:/, '');
   } catch (e) {
     // ignore
   }
@@ -85,17 +89,24 @@ export async function POST(request) {
 
     const cleanUsername = username.trim().toLowerCase();
 
+    if (cleanUsername.length > 39) {
+      return NextResponse.json({ error: 'Username too long' }, { status: 400 });
+    }
+
     // Rate limiting per IP
     const ip = getClientIp(request);
     const rl = checkRateLimit(ip, 40, 60 * 1000); // 40 requests / minute
     if (!rl.ok) {
-      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429, headers: { 'X-RateLimit-Remaining': '0' } });
+      return NextResponse.json(
+        { error: 'Rate limit exceeded' },
+        { status: 429, headers: { 'X-RateLimit-Remaining': '0', 'X-RateLimit-Reset': String(rl.resetAt) } }
+      );
     }
 
     // Check in-process cache
     const cached = getCached(cleanUsername);
     if (cached) {
-      return NextResponse.json(cached, { status: 200, headers: { 'X-Cache': 'HIT' } });
+      return NextResponse.json(cached, { status: 200, headers: { 'X-Cache': 'HIT', 'X-RateLimit-Remaining': String(rl.remaining) } });
     }
 
     // ── Fetch GitHub data in parallel ─────────
@@ -178,6 +189,7 @@ export async function POST(request) {
       headers: {
         // Let Vercel / CDN cache the analysis for a short time while allowing revalidation
         "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        "X-RateLimit-Remaining": String(rl.remaining),
       },
     });
   } catch (err) {
@@ -204,5 +216,26 @@ export async function POST(request) {
       { error: "Something went wrong. Please try again later." },
       { status: 500 }
     );
+  }
+}
+
+// Support GET /api/analyze?username=... for linkable requests
+export async function GET(request) {
+  try {
+    const url = new URL(request.url);
+    const username = url.searchParams.get('username');
+    if (!username) {
+      return NextResponse.json({ error: 'Please provide a username query parameter' }, { status: 400 });
+    }
+
+    // Reuse the POST logic by constructing a minimal body-like object
+    // Create a shallow clone of request so getClientIp and headers are preserved
+    const fakeRequest = request;
+    // Attach a json() method that returns the expected shape
+    fakeRequest.json = async () => ({ username });
+    return await POST(fakeRequest);
+  } catch (e) {
+    console.error('GET /api/analyze error', e);
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 }
